@@ -16,6 +16,7 @@ import type {
   AnswerValue,
   AnswersByQuestion,
 } from "@/lib/badHabits/questions";
+import { filterKnownHabits } from "@/lib/badHabits/catalog";
 
 import { StepSplash } from "./_components/StepSplash";
 import { StepFocus } from "./_components/StepFocus";
@@ -224,7 +225,7 @@ function OnboardingFlow() {
 
       setState({
         display_name: profile?.display_name ?? "",
-        focus_habits: responses?.focus_habits ?? [],
+        focus_habits: filterKnownHabits(responses?.focus_habits ?? []),
         desired_outcomes: responses?.desired_outcomes ?? [],
         risk_times: responses?.risk_times ?? [],
         risk_situations: responses?.risk_situations ?? [],

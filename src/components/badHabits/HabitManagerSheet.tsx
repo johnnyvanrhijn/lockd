@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils/cn";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { GhostButton } from "@/components/ui/GhostButton";
 import { BadHabitTile } from "@/components/badHabits/BadHabitTile";
+import { getHabitIcon } from "@/components/badHabits/HabitIcons";
 import {
   DEFAULT_BAD_HABITS,
   EXTRA_BAD_HABITS,
@@ -138,7 +139,7 @@ export function HabitManagerSheet({
         </div>
 
         <div className="mt-1 flex flex-1 flex-col gap-4 overflow-y-auto pb-3 pr-1 pt-3">
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-3 gap-2.5">
             {DEFAULT_BAD_HABITS.map((opt) => {
               const isSelected = selected.includes(opt.id);
               const disabled = !isSelected && atMax;
@@ -146,6 +147,7 @@ export function HabitManagerSheet({
                 <BadHabitTile
                   key={opt.id}
                   title={opt.name}
+                  icon={getHabitIcon(opt.id)}
                   selected={isSelected}
                   disabled={disabled}
                   onClick={() => toggle(opt.id)}

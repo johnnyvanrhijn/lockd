@@ -5,6 +5,7 @@ import { OnboardingShell } from "@/components/ui/OnboardingShell";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { GhostButton } from "@/components/ui/GhostButton";
 import { BadHabitTile } from "@/components/badHabits/BadHabitTile";
+import { getHabitIcon } from "@/components/badHabits/HabitIcons";
 import {
   DEFAULT_BAD_HABITS,
   EXTRA_BAD_HABITS,
@@ -113,7 +114,7 @@ export function StepFocus({
       }
     >
       <div className="flex flex-col gap-4">
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-3 gap-2.5">
           {DEFAULT_BAD_HABITS.map((opt) => {
             const isSelected = selected.includes(opt.id);
             const disabled = !isSelected && atMax;
@@ -121,6 +122,7 @@ export function StepFocus({
               <BadHabitTile
                 key={opt.id}
                 title={opt.name}
+                icon={getHabitIcon(opt.id)}
                 selected={isSelected}
                 disabled={disabled}
                 onClick={() => toggle(opt.id)}

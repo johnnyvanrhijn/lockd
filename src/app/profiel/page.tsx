@@ -15,7 +15,6 @@ import { LoadingSkeleton } from "@/components/ui/LoadingSkeleton";
 import { SummarySection } from "@/components/onboarding/SummarySection";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import {
-  HABIT_OPTIONS,
   OUTCOME_OPTIONS,
   TIME_OPTIONS,
   SITUATION_OPTIONS,
@@ -25,6 +24,15 @@ import {
 } from "@/lib/onboarding/options";
 import { HabitAssumptionsSheet } from "@/components/badHabits/HabitAssumptionsSheet";
 import { HabitManagerSheet } from "@/components/badHabits/HabitManagerSheet";
+import {
+  OptionListEditSheet,
+  type OptionEntry,
+} from "@/components/profile/OptionListEditSheet";
+import {
+  SupportEditSheet,
+  type ToneId,
+} from "@/components/profile/SupportEditSheet";
+import { RiskMomentsEditSheet } from "@/components/profile/RiskMomentsEditSheet";
 import { getBadHabitName } from "@/lib/badHabits/catalog";
 import {
   type AnswerValue,
@@ -183,6 +191,17 @@ export default function ProfilePage() {
   const [managerOpen, setManagerOpen] = useState(false);
   const [savingManager, setSavingManager] = useState(false);
 
+  /** Which onboarding section is currently being edited inline. */
+  type EditingSection =
+    | null
+    | "outcomes"
+    | "risk"
+    | "triggers"
+    | "support"
+    | "accountability";
+  const [editingSection, setEditingSection] = useState<EditingSection>(null);
+  const [savingSection, setSavingSection] = useState(false);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -280,6 +299,27 @@ export default function ProfilePage() {
     }
     setHabitAnswers((prev) => ({ ...prev, [habitId]: answers }));
     setEditingHabit(null);
+  }
+
+  async function saveResponsesPatch(patch: Partial<Responses>) {
+    setSavingSection(true);
+    const supabase = getSupabaseClient();
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
+      setSavingSection(false);
+      return;
+    }
+    const { error } = await supabase
+      .from("onboarding_responses")
+      .update(patch)
+      .eq("user_id", userData.user.id);
+    setSavingSection(false);
+    if (error) {
+      console.error("[profile] update onboarding_responses failed:", error);
+      return;
+    }
+    setResponses((prev) => (prev ? { ...prev, ...patch } : prev));
+    setEditingSection(null);
   }
 
   async function saveHabitSelection(next: string[]) {
@@ -425,17 +465,9 @@ export default function ProfilePage() {
               <GlassCard padding="none">
                 <div className="flex flex-col divide-y divide-[var(--color-border)] px-4">
                   <SummarySection
-                    eyebrow="Jouw focus"
-                    title={`${responses.focus_habits.length} gewoonte${responses.focus_habits.length === 1 ? "" : "s"}`}
-                    onEdit={restartOnboarding}
-                    defaultOpen={false}
-                  >
-                    {labelsFor(responses.focus_habits, HABIT_OPTIONS)}
-                  </SummarySection>
-                  <SummarySection
                     eyebrow="Jouw waarom"
                     title="Wat je terug wil"
-                    onEdit={restartOnboarding}
+                    onEdit={() => setEditingSection("outcomes")}
                     defaultOpen={false}
                   >
                     {labelsFor(responses.desired_outcomes, OUTCOME_OPTIONS)}
@@ -443,7 +475,7 @@ export default function ProfilePage() {
                   <SummarySection
                     eyebrow="Risicomomenten"
                     title="Wanneer en waar"
-                    onEdit={restartOnboarding}
+                    onEdit={() => setEditingSection("risk")}
                     defaultOpen={false}
                   >
                     <div className="flex flex-col gap-1">
@@ -463,7 +495,7 @@ export default function ProfilePage() {
                   <SummarySection
                     eyebrow="Jouw triggers"
                     title={`${responses.triggers.length} trigger${responses.triggers.length === 1 ? "" : "s"}`}
-                    onEdit={restartOnboarding}
+                    onEdit={() => setEditingSection("triggers")}
                     defaultOpen={false}
                   >
                     {labelsFor(responses.triggers, TRIGGER_OPTIONS)}
@@ -471,7 +503,7 @@ export default function ProfilePage() {
                   <SummarySection
                     eyebrow="Ondersteuning"
                     title={`Tone: ${TONE_OPTIONS.find((t) => t.id === responses.tone_of_voice)?.label ?? "Neutraal"}`}
-                    onEdit={restartOnboarding}
+                    onEdit={() => setEditingSection("support")}
                     defaultOpen={false}
                   >
                     <div className="flex flex-col gap-1">
@@ -492,7 +524,7 @@ export default function ProfilePage() {
                         ? "Buddies mode"
                         : "Solo mode"
                     }
-                    onEdit={restartOnboarding}
+                    onEdit={() => setEditingSection("accountability")}
                     defaultOpen={false}
                   >
                     {responses.accountability_mode === "buddies"
@@ -574,6 +606,100 @@ export default function ProfilePage() {
           saving={savingManager}
           onClose={() => setManagerOpen(false)}
           onSave={(next) => saveHabitSelection(next)}
+        />
+      )}
+
+      {responses && editingSection === "outcomes" && (
+        <OptionListEditSheet
+          key="outcomes"
+          eyebrow="Jouw waarom"
+          title="Wat wil je terugkrijgen?"
+          subtitle="Selecteer alles wat past."
+          multi
+          options={OUTCOME_OPTIONS as ReadonlyArray<OptionEntry>}
+          initialSelected={responses.desired_outcomes}
+          saving={savingSection}
+          onClose={() => setEditingSection(null)}
+          onSave={(next) => saveResponsesPatch({ desired_outcomes: next })}
+        />
+      )}
+
+      {responses && editingSection === "triggers" && (
+        <OptionListEditSheet
+          key="triggers"
+          eyebrow="Jouw triggers"
+          title="Wat gaat er vaak vooraf?"
+          subtitle="Selecteer wat herkenbaar is."
+          multi
+          options={TRIGGER_OPTIONS as ReadonlyArray<OptionEntry>}
+          initialSelected={responses.triggers}
+          saving={savingSection}
+          onClose={() => setEditingSection(null)}
+          onSave={(next) => saveResponsesPatch({ triggers: next })}
+        />
+      )}
+
+      {responses && editingSection === "accountability" && (
+        <OptionListEditSheet
+          key="accountability"
+          eyebrow="Accountability"
+          title="Solo of met buddies?"
+          subtitle="Je kunt later altijd switchen."
+          multi={false}
+          options={[
+            {
+              id: "solo",
+              label: "Solo",
+              description: "Alles blijft tussen jou en LOCKD.",
+            },
+            {
+              id: "buddies",
+              label: "Buddies",
+              description: "Een kleine circle ziet jouw signalen.",
+            },
+          ]}
+          initialSelected={[responses.accountability_mode]}
+          saving={savingSection}
+          onClose={() => setEditingSection(null)}
+          onSave={(next) =>
+            saveResponsesPatch({
+              accountability_mode: next[0] ?? "solo",
+            })
+          }
+        />
+      )}
+
+      {responses && editingSection === "risk" && (
+        <RiskMomentsEditSheet
+          key="risk"
+          initialTimes={responses.risk_times}
+          initialSituations={responses.risk_situations}
+          saving={savingSection}
+          onClose={() => setEditingSection(null)}
+          onSave={({ times, situations }) =>
+            saveResponsesPatch({
+              risk_times: times,
+              risk_situations: situations,
+            })
+          }
+        />
+      )}
+
+      {responses && editingSection === "support" && (
+        <SupportEditSheet
+          key="support"
+          initialTone={responses.tone_of_voice as ToneId}
+          initialSupport={responses.support_modes}
+          initialActive={responses.active_intervention}
+          saving={savingSection}
+          onClose={() => setEditingSection(null)}
+          onSave={({ tone, support, active }) =>
+            saveResponsesPatch({
+              tone_of_voice: tone,
+              support_modes: support,
+              active_intervention: active,
+            })
+          }
         />
       )}
     </AppShell>

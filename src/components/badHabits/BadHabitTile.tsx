@@ -6,19 +6,22 @@ import { cn } from "@/lib/utils/cn";
 type Props = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "title"> & {
   title: ReactNode;
   selected?: boolean;
+  /** Optional Lucide-style icon. Rendered above the label when present. */
+  icon?: ReactNode;
 };
 
 /**
- * A compact tile used in the bad-habits 4×4 selection grid in onboarding.
+ * Compact tile used in the bad-habits 3×N selection grid in onboarding.
  *
  * Visual states mirror the rest of the design system: neutral glass at rest,
- * Iris-tinted border + soft glow when selected, dimmed when disabled. The
- * label is centered and clamps to two lines so longer Dutch words ("Series
- * bingen", "Slechte grenzen") never break the grid rhythm.
+ * Iris-tinted border + soft glow when selected, dimmed when disabled. When
+ * an icon is provided it sits above a centered label; without an icon the
+ * label centers vertically.
  */
 export function BadHabitTile({
   title,
   selected = false,
+  icon,
   className,
   type = "button",
   disabled,
@@ -33,7 +36,7 @@ export function BadHabitTile({
       aria-disabled={disabled || undefined}
       disabled={disabled}
       className={cn(
-        "relative flex aspect-square w-full items-center justify-center",
+        "relative flex aspect-square w-full flex-col items-center justify-center gap-1.5",
         "rounded-[var(--radius-md)] p-2 text-center",
         "border bg-surface/70 backdrop-blur-xl",
         "transition-all duration-200",
@@ -52,9 +55,22 @@ export function BadHabitTile({
         className,
       )}
     >
+      {icon && (
+        <span
+          aria-hidden
+          className={cn(
+            "flex h-8 w-8 items-center justify-center",
+            "[&_svg]:h-6 [&_svg]:w-6",
+            "transition-colors duration-200",
+            selected ? "text-purple-bright" : "text-foreground/70",
+          )}
+        >
+          {icon}
+        </span>
+      )}
       <span
         className={cn(
-          "block text-xs font-semibold leading-tight",
+          "block text-[12px] font-semibold leading-tight",
           "line-clamp-2 break-words",
           selected ? "text-foreground" : "text-foreground/85",
         )}

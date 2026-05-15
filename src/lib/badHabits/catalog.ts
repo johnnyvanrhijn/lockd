@@ -62,3 +62,17 @@ export function getBadHabit(id: string): BadHabit | undefined {
 export function getBadHabitName(id: string): string {
   return BY_ID[id]?.name ?? id;
 }
+
+/** True when `id` references a habit that lives in the current catalog. */
+export function isKnownHabit(id: string): boolean {
+  return Boolean(BY_ID[id]);
+}
+
+/**
+ * Drop any habit IDs that aren't in the current catalog (e.g. legacy IDs
+ * left over in `onboarding_responses.focus_habits` from before the bad-habits
+ * migration). Order preserved.
+ */
+export function filterKnownHabits(ids: ReadonlyArray<string>): string[] {
+  return ids.filter(isKnownHabit);
+}
