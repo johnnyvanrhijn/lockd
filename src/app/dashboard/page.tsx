@@ -37,6 +37,12 @@ import {
 } from "@/lib/badHabits/risk";
 import type { AnswerValue, AnswersByQuestion } from "@/lib/badHabits/questions";
 import { getQuestionsForHabit } from "@/lib/badHabits/questions";
+import { StruggleOverlay } from "@/components/struggle/StruggleOverlay";
+import type { StruggleContext } from "@/lib/struggle/types";
+import {
+  OUTCOME_OPTIONS,
+  TRIGGER_OPTIONS as ONBOARDING_TRIGGER_OPTIONS,
+} from "@/lib/onboarding/options";
 import { cn } from "@/lib/utils/cn";
 
 /* -------------------------------------------------------------------------- */
@@ -223,6 +229,10 @@ type DashboardData = {
   impact: AggregatedImpact;
   risk: RiskAssessment;
   riskWindowSentence: string | null;
+  onboardingFacts: {
+    desiredOutcomes: string[];
+    triggers: string[];
+  };
 };
 
 export default function DashboardPage() {
@@ -236,6 +246,10 @@ export default function DashboardPage() {
   // Bumping this counter triggers a fresh fetch. Effects subscribe to
   // `refreshTick`; event handlers call `triggerRefresh()` to mutate it.
   const [refreshTick, setRefreshTick] = useState(0);
+  /** Drives the "Ik struggle nu" overlay. `key` re-mounts the orchestrator
+   * on every reopen so its internal state machine starts fresh. */
+  const [struggleOpen, setStruggleOpen] = useState(false);
+  const [struggleKey, setStruggleKey] = useState(0);
   const triggerRefresh = useCallback(
     () => setRefreshTick((n) => n + 1),
     [],
@@ -261,6 +275,7 @@ export default function DashboardPage() {
         answersRes,
         failsRes,
         weekHistoryRes,
+        responsesRes,
       ] = await Promise.all([
         supabase
           .from("profiles")
@@ -296,6 +311,11 @@ export default function DashboardPage() {
           p_from: since7,
           p_to: logDate,
         }),
+        supabase
+          .from("onboarding_responses")
+          .select("desired_outcomes, triggers")
+          .eq("user_id", userId)
+          .maybeSingle(),
       ]);
 
       const profile = profileRes.data;
@@ -438,6 +458,21 @@ export default function DashboardPage() {
         now: nowDate,
       });
 
+      // Onboarding-derived labels for Reality Mirror empty-state copy.
+      const responses = responsesRes.data;
+      const outcomeMap = new Map(OUTCOME_OPTIONS.map((o) => [o.id, o.label]));
+      const triggerMap = new Map(
+        ONBOARDING_TRIGGER_OPTIONS.map((o) => [o.id, o.label]),
+      );
+      const onboardingFacts = {
+        desiredOutcomes: (responses?.desired_outcomes ?? [])
+          .map((id) => outcomeMap.get(id))
+          .filter((x): x is string => Boolean(x)),
+        triggers: (responses?.triggers ?? [])
+          .map((id) => triggerMap.get(id))
+          .filter((x): x is string => Boolean(x)),
+      };
+
       return {
         displayName: profile?.display_name ?? null,
         habits: enriched,
@@ -451,6 +486,7 @@ export default function DashboardPage() {
         impact,
         risk,
         riskWindowSentence: describeWindow(risk),
+        onboardingFacts,
       };
     }
 
@@ -534,7 +570,21 @@ export default function DashboardPage() {
     [data, logDate, triggerRefresh],
   );
 
+  const struggleContext: StruggleContext | null = data
+    ? {
+        habits: data.habits.map((h) => ({
+          habit_id: h.habit_id,
+          name: h.name,
+          streak: h.streak,
+        })),
+        logDate,
+        displayName: data.displayName,
+        onboardingFacts: data.onboardingFacts,
+      }
+    : null;
+
   return (
+    <>
     <AppShell
       header={
         <GreetingHeader
@@ -579,7 +629,12 @@ export default function DashboardPage() {
             />
           )}
 
-          <StruggleCallout />
+          <StruggleCallout
+            onOpen={() => {
+              setStruggleKey((k) => k + 1);
+              setStruggleOpen(true);
+            }}
+          />
 
           <section className="flex flex-col gap-3">
             <SectionHeader
@@ -670,6 +725,17 @@ export default function DashboardPage() {
         </div>
       )}
     </AppShell>
+
+    {struggleOpen && struggleContext && (
+      <StruggleOverlay
+        key={struggleKey}
+        open={struggleOpen}
+        context={struggleContext}
+        onClose={() => setStruggleOpen(false)}
+        onCompleted={() => triggerRefresh()}
+      />
+    )}
+    </>
   );
 }
 
@@ -735,7 +801,7 @@ function GreetingHeader({
   );
 }
 
-function StruggleCallout() {
+function StruggleCallout({ onOpen }: { onOpen: () => void }) {
   return (
     <GlassCard padding="sm">
       <div className="flex items-center gap-3">
@@ -762,6 +828,7 @@ function StruggleCallout() {
 
         <button
           type="button"
+          onClick={onOpen}
           className={cn(
             "inline-flex shrink-0 items-center gap-1.5",
             "rounded-full border border-purple/40 bg-purple/10 px-3.5 py-2",
