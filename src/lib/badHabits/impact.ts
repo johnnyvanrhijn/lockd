@@ -398,6 +398,12 @@ export type AggregatedImpact = {
   money: number; // €
   kcal: number;
   hours: number;
+  /**
+   * Approximate fat mass not stored (kg). Derived from total kcal avoided
+   * using the conventional 7700 kcal ≈ 1 kg body fat conversion. Only useful
+   * once enough kcal have accumulated — UI gates display at >= 0.3 kg.
+   */
+  fatKg: number;
   /** Per-habit count totals (kind=count) for richer secondary tiles. */
   counts: Array<{
     habitId: string;
@@ -431,7 +437,7 @@ export function aggregateImpact(inputs: ImpactInput[]): AggregatedImpact {
     }
   }
 
-  return { money, kcal, hours, counts };
+  return { money, kcal, hours, fatKg: kcal / 7700, counts };
 }
 
 /**
@@ -477,6 +483,12 @@ export function formatKcal(k: number): string {
 export function formatCount(n: number, unit = "x"): string {
   const rounded = n >= 100 ? Math.round(n) : Math.round(n * 10) / 10;
   return `${rounded}${unit === "x" ? "" : ` ${unit}`}`;
+}
+
+export function formatFatMass(kg: number): string {
+  if (kg >= 10) return `${Math.round(kg)} kg`;
+  if (kg >= 1) return `${kg.toFixed(1)} kg`;
+  return `${(kg * 1000).toFixed(0)} g`;
 }
 
 /** Convenience: pick the metric `Question` used for impact assumption editing. */

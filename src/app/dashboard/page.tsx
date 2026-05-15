@@ -21,6 +21,10 @@ import {
 import { ImpactInsightGrid } from "@/components/badHabits/ImpactInsightGrid";
 import { RiskCard } from "@/components/badHabits/RiskCard";
 import {
+  StreaksRail,
+  type StreakEntry,
+} from "@/components/badHabits/StreaksRail";
+import {
   aggregateImpact,
   type AggregatedImpact,
   type ImpactInput,
@@ -623,7 +627,18 @@ export default function DashboardPage() {
           {data.habits.length > 0 && (
             <ImpactInsightGrid
               impact={data.impact}
+              riskWindow={data.risk.windowLabel}
               onOpenHistory={() => router.push("/geschiedenis")}
+            />
+          )}
+
+          {data.habits.length > 0 && (
+            <StreaksRail
+              streaks={data.habits.map<StreakEntry>((h) => ({
+                habitId: h.habit_id,
+                name: h.name,
+                days: h.streak,
+              }))}
             />
           )}
 

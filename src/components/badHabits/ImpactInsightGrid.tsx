@@ -5,14 +5,26 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { cn } from "@/lib/utils/cn";
 import {
   formatCount,
+  formatFatMass,
   formatHours,
   formatKcal,
   formatMoney,
   type AggregatedImpact,
 } from "@/lib/badHabits/impact";
 
+type Tile = {
+  key: string;
+  kind: "money" | "hours" | "kcal" | "fat" | "count" | "risk";
+  value: string;
+  label: string;
+  /** Used to rank which tile becomes the hero. */
+  rank: number;
+};
+
 type Props = {
   impact: AggregatedImpact;
+  /** Optional "Hoogste risico" window, e.g. "22:00–00:00". */
+  riskWindow?: string | null;
   onOpenHistory?: () => void;
 };
 
@@ -56,122 +68,216 @@ function FlameIcon() {
   );
 }
 
-function StatTile({
-  icon,
-  value,
-  label,
-  tone = "neutral",
-}: {
-  icon: ReactNode;
-  value: string;
-  label: string;
-  tone?: "neutral" | "iris";
-}) {
+function ScaleIcon() {
   return (
-    <div className="flex min-w-0 flex-col items-start gap-2">
-      <span
-        aria-hidden
-        className={cn(
-          "flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)]",
-          "[&_svg]:h-4 [&_svg]:w-4",
-          tone === "iris"
-            ? "bg-purple/15 text-purple-bright"
-            : "bg-surface-elevated text-muted",
-        )}
-      >
-        {icon}
-      </span>
-      <div className="flex flex-col gap-0.5">
-        <span className="text-base font-semibold leading-none tabular-nums text-foreground">
-          {value}
-        </span>
-        <span className="text-[11px] leading-tight text-muted">{label}</span>
-      </div>
-    </div>
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden>
+      <path
+        d="M12 5v14M5 5h14M3 11l4-6 4 6a4 4 0 0 1-8 0Zm10 0l4-6 4 6a4 4 0 0 1-8 0Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
-/**
- * "Proof of change" — the dashboard's transformation evidence. Tiles only
- * appear when there's a non-zero value to show, so a freshly-onboarded user
- * doesn't see a wall of zeros.
- */
-export function ImpactInsightGrid({ impact, onOpenHistory }: Props) {
-  const tiles: ReactNode[] = [];
+function ClockIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden>
+      <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.6" />
+      <path
+        d="M12 7.5V12l3 2.5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
+function iconForKind(kind: Tile["kind"]): ReactNode {
+  switch (kind) {
+    case "money":
+      return <CoinIcon />;
+    case "hours":
+      return <HourglassIcon />;
+    case "kcal":
+      return <FlameIcon />;
+    case "fat":
+      return <ScaleIcon />;
+    case "count":
+      return <FlameIcon />;
+    case "risk":
+      return <ClockIcon />;
+  }
+}
+
+/**
+ * "Proof of change" — the dashboard's transformation evidence. Renders the
+ * single largest impact metric as a hero card, with secondary metrics below
+ * in a compact grid. Tiles only appear when there's something to show, so a
+ * fresh user doesn't see a wall of zeros.
+ */
+export function ImpactInsightGrid({ impact, riskWindow, onOpenHistory }: Props) {
+  const tiles: Tile[] = [];
+
+  // Rank: money > hours > kcal > fat. (Money "wins" because € is the most
+  // visceral proof for most users; this matches the brief's example list.)
   if (impact.money > 0) {
-    tiles.push(
-      <StatTile
-        key="money"
-        icon={<CoinIcon />}
-        value={formatMoney(impact.money)}
-        label="Bespaard"
-        tone="iris"
-      />,
-    );
+    tiles.push({
+      key: "money",
+      kind: "money",
+      value: formatMoney(impact.money),
+      label: "Bespaard",
+      rank: 100,
+    });
   }
   if (impact.hours > 0) {
-    tiles.push(
-      <StatTile
-        key="hours"
-        icon={<HourglassIcon />}
-        value={formatHours(impact.hours)}
-        label="Teruggewonnen"
-      />,
-    );
+    tiles.push({
+      key: "hours",
+      kind: "hours",
+      value: formatHours(impact.hours),
+      label: "Teruggewonnen",
+      rank: 80,
+    });
   }
   if (impact.kcal > 0) {
-    tiles.push(
-      <StatTile
-        key="kcal"
-        icon={<FlameIcon />}
-        value={formatKcal(impact.kcal)}
-        label="Kcal vermeden"
-      />,
-    );
+    tiles.push({
+      key: "kcal",
+      kind: "kcal",
+      value: formatKcal(impact.kcal),
+      label: "Kcal vermeden",
+      rank: 60,
+    });
   }
-  // Show one bonus count tile if there's a particularly large one.
+  // Gate fat-mass conversion: needs enough accumulated kcal so the number
+  // feels credible (>= 0.3 kg ≈ 30 days at sugar baseline).
+  if (impact.fatKg >= 0.3) {
+    tiles.push({
+      key: "fat",
+      kind: "fat",
+      value: formatFatMass(impact.fatKg),
+      label: "Vetmassa niet opgeslagen",
+      rank: 50,
+    });
+  }
+  // Bonus count tile (e.g. "sigaretten vermeden") — surfaces the biggest one.
   const biggestCount = [...impact.counts].sort((a, b) => b.total - a.total)[0];
-  if (biggestCount && biggestCount.total >= 5 && tiles.length < 3) {
-    tiles.push(
-      <StatTile
-        key={`count-${biggestCount.habitId}`}
-        icon={<FlameIcon />}
-        value={formatCount(biggestCount.total, biggestCount.unit)}
-        label={biggestCount.label}
-      />,
-    );
+  if (biggestCount && biggestCount.total >= 5) {
+    tiles.push({
+      key: `count-${biggestCount.habitId}`,
+      kind: "count",
+      value: formatCount(biggestCount.total, biggestCount.unit),
+      label: biggestCount.label,
+      rank: 40,
+    });
+  }
+  if (riskWindow) {
+    tiles.push({
+      key: "risk-window",
+      kind: "risk",
+      value: riskWindow,
+      label: "Hoogste risico",
+      rank: 30,
+    });
   }
 
   if (tiles.length === 0) return null;
 
-  const cols = tiles.length === 1 ? "grid-cols-1" : tiles.length === 2 ? "grid-cols-2" : "grid-cols-3";
+  // Hero = highest-ranked tile; grid = the rest.
+  tiles.sort((a, b) => b.rank - a.rank);
+  const [hero, ...rest] = tiles;
+  const gridCols =
+    rest.length === 1 ? "grid-cols-1" : rest.length === 2 ? "grid-cols-2" : "grid-cols-3";
 
   return (
-    <GlassCard padding="lg">
-      <div className="flex flex-col items-stretch gap-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.25em] text-purple-bright">
-            Bewijs van verandering
-          </h2>
-          {onOpenHistory && (
-            <button
-              type="button"
-              onClick={onOpenHistory}
-              className={cn(
-                "text-[11px] font-medium text-muted",
-                "hover:text-foreground transition-colors",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-bright/60",
-                "rounded-full px-2 py-0.5",
-              )}
-            >
-              Bekijk →
-            </button>
-          )}
+    <section className="flex flex-col gap-3">
+      <div className="flex items-center justify-between px-1">
+        <h2 className="text-[11px] font-semibold uppercase tracking-[0.25em] text-purple-bright">
+          Bewijs van verandering
+        </h2>
+        {onOpenHistory && (
+          <button
+            type="button"
+            onClick={onOpenHistory}
+            className={cn(
+              "rounded-full px-2 py-0.5 text-[11px] font-medium",
+              "text-muted hover:text-foreground transition-colors",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-bright/60",
+            )}
+          >
+            Bekijk →
+          </button>
+        )}
+      </div>
+
+      <HeroStatCard tile={hero} />
+
+      {rest.length > 0 && (
+        <div className={cn("grid gap-2", gridCols)}>
+          {rest.map((t) => (
+            <SmallStatCard key={t.key} tile={t} />
+          ))}
         </div>
-        <div className={cn("grid gap-3", cols)}>{tiles}</div>
+      )}
+    </section>
+  );
+}
+
+function HeroStatCard({ tile }: { tile: Tile }) {
+  return (
+    <GlassCard tone="purple" glow="soft" padding="lg">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-1">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.25em] text-purple-bright">
+            {tile.label}
+          </span>
+          <span className="text-[40px] font-semibold leading-none tracking-tight text-foreground tabular-nums">
+            {tile.value}
+          </span>
+        </div>
+        <span
+          aria-hidden
+          className={cn(
+            "flex h-12 w-12 shrink-0 items-center justify-center",
+            "rounded-[var(--radius-md)] bg-purple/20 text-purple-bright",
+            "shadow-[0_0_28px_-12px_var(--color-purple-glow)]",
+            "[&_svg]:h-6 [&_svg]:w-6",
+          )}
+        >
+          {iconForKind(tile.kind)}
+        </span>
       </div>
     </GlassCard>
+  );
+}
+
+function SmallStatCard({ tile }: { tile: Tile }) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-2 rounded-[var(--radius-md)] border border-[var(--color-border)]",
+        "bg-surface/70 backdrop-blur-xl px-3.5 py-3",
+      )}
+    >
+      <span
+        aria-hidden
+        className={cn(
+          "flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)]",
+          "bg-surface-elevated text-muted",
+          "[&_svg]:h-3.5 [&_svg]:w-3.5",
+        )}
+      >
+        {iconForKind(tile.kind)}
+      </span>
+      <div className="flex flex-col gap-0.5">
+        <span className="text-base font-semibold leading-none tabular-nums text-foreground">
+          {tile.value}
+        </span>
+        <span className="text-[10px] leading-tight text-muted">{tile.label}</span>
+      </div>
+    </div>
   );
 }
 

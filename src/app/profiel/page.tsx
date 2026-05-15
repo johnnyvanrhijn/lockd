@@ -24,6 +24,7 @@ import {
   SUPPORT_OPTIONS,
 } from "@/lib/onboarding/options";
 import { HabitAssumptionsSheet } from "@/components/badHabits/HabitAssumptionsSheet";
+import { HabitManagerSheet } from "@/components/badHabits/HabitManagerSheet";
 import { getBadHabitName } from "@/lib/badHabits/catalog";
 import {
   type AnswerValue,
@@ -179,6 +180,8 @@ export default function ProfilePage() {
   /** When set, the assumption-edit sheet is open for this habit. */
   const [editingHabit, setEditingHabit] = useState<string | null>(null);
   const [savingHabit, setSavingHabit] = useState(false);
+  const [managerOpen, setManagerOpen] = useState(false);
+  const [savingManager, setSavingManager] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -277,6 +280,40 @@ export default function ProfilePage() {
     }
     setHabitAnswers((prev) => ({ ...prev, [habitId]: answers }));
     setEditingHabit(null);
+  }
+
+  async function saveHabitSelection(next: string[]) {
+    setSavingManager(true);
+    const supabase = getSupabaseClient();
+    const [syncRes, responsesRes] = await Promise.all([
+      supabase.rpc("sync_user_bad_habits", { p_habit_ids: next }),
+      // Keep the legacy focus_habits array in lock-step so the summary cards
+      // and any older code paths that read from onboarding_responses stay
+      // accurate.
+      supabase
+        .from("onboarding_responses")
+        .update({ focus_habits: next })
+        .eq(
+          "user_id",
+          (await supabase.auth.getUser()).data.user?.id ?? "",
+        ),
+    ]);
+    setSavingManager(false);
+    if (syncRes.error) {
+      console.error("[profile] sync_user_bad_habits failed:", syncRes.error);
+      return;
+    }
+    if (responsesRes.error) {
+      console.warn(
+        "[profile] focus_habits mirror update failed:",
+        responsesRes.error,
+      );
+    }
+    setActiveHabits(next);
+    setResponses((prev) =>
+      prev ? { ...prev, focus_habits: next } : prev,
+    );
+    setManagerOpen(false);
   }
 
   return (
@@ -467,11 +504,32 @@ export default function ProfilePage() {
             </section>
           )}
 
-          {activeHabits.length > 0 && (
-            <section className="flex flex-col gap-3">
-              <h2 className="px-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-purple-bright">
-                Aannames per gewoonte
+          <section className="flex flex-col gap-3">
+            <div className="flex items-center justify-between px-1">
+              <h2 className="text-[11px] font-semibold uppercase tracking-[0.25em] text-purple-bright">
+                Jouw gewoontes
               </h2>
+              <button
+                type="button"
+                onClick={() => setManagerOpen(true)}
+                className={cn(
+                  "rounded-full px-2 py-0.5 text-[11px] font-medium",
+                  "text-muted hover:text-foreground transition-colors",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-bright/60",
+                )}
+              >
+                Beheer →
+              </button>
+            </div>
+            {activeHabits.length === 0 ? (
+              <GlassCard tone="elevated" padding="md">
+                <p className="text-sm text-muted">
+                  Geen actieve gewoontes. Tap{" "}
+                  <span className="text-foreground">Beheer</span> om te
+                  beginnen.
+                </p>
+              </GlassCard>
+            ) : (
               <GlassCard padding="none">
                 <ul className="flex flex-col divide-y divide-[var(--color-border)] px-4">
                   {activeHabits.map((habitId) => (
@@ -485,8 +543,8 @@ export default function ProfilePage() {
                   ))}
                 </ul>
               </GlassCard>
-            </section>
-          )}
+            )}
+          </section>
 
           <section className="flex flex-col gap-3 pt-2">
             <PrimaryButton fullWidth onClick={restartOnboarding}>
@@ -507,6 +565,15 @@ export default function ProfilePage() {
           saving={savingHabit}
           onClose={() => setEditingHabit(null)}
           onSave={(answers) => saveHabitAnswers(editingHabit, answers)}
+        />
+      )}
+
+      {managerOpen && (
+        <HabitManagerSheet
+          initialSelected={activeHabits}
+          saving={savingManager}
+          onClose={() => setManagerOpen(false)}
+          onSave={(next) => saveHabitSelection(next)}
         />
       )}
     </AppShell>
