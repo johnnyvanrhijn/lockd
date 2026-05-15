@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { MobilePage } from "@/components/layout/MobilePage";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { GhostButton } from "@/components/ui/GhostButton";
 import { getServerSupabase } from "@/lib/supabase/server";
+import { InviteLinkCard } from "@/components/onboarding/InviteLinkCard";
 import { AcceptInviteButton } from "./AcceptInviteButton";
 
 type Params = { code: string };
@@ -38,20 +39,63 @@ export default async function InvitePage({
   const expired = preview
     ? new Date(preview.expires_at).getTime() < Date.now()
     : false;
-  const isInvalid =
-    !preview || preview.status !== "pending" || expired;
-  const isOwnInvite = preview && user && preview.inviter_id === user.id;
+  const isInvalid = !preview || preview.status !== "pending" || expired;
+  const isOwnInvite = Boolean(
+    preview && user && preview.inviter_id === user.id,
+  );
 
-  // If the user is the owner of this invite, no point showing the accept
-  // screen; bounce them back to dashboard.
-  if (isOwnInvite) {
-    redirect("/dashboard");
+  // -- The inviter themselves opens their own invite link.
+  //    Show what the link is for + a copy-to-clipboard, not the accept screen
+  //    (you can't be your own buddy).
+  if (isOwnInvite && !isInvalid) {
+    const hdrs = await headers();
+    const proto = hdrs.get("x-forwarded-proto") ?? "https";
+    const host = hdrs.get("host") ?? "project-laknm.vercel.app";
+    const fullUrl = `${proto}://${host}/invite/${code}`;
+
+    return (
+      <MobilePage contentClassName="gap-8 pt-[max(env(safe-area-inset-top),3rem)]">
+        <PageHeader
+          eyebrow="Jouw invite link"
+          title={
+            <>
+              Dit is{" "}
+              <span className="text-purple-bright">jouw</span> link.
+            </>
+          }
+          subtitle="Stuur 'm naar 1 tot 5 mensen die jou scherp houden. Iedereen die de link opent ziet een uitnodiging op jouw naam."
+        />
+
+        <InviteLinkCard url={fullUrl} />
+
+        <GlassCard tone="elevated" padding="md" className="flex flex-col gap-2">
+          <h3 className="text-sm font-semibold text-foreground">
+            Hoe het werkt
+          </h3>
+          <ul className="flex flex-col gap-1.5 text-xs text-muted">
+            <li>1. Deel de link via WhatsApp, SMS of email.</li>
+            <li>2. De ontvanger opent de link en logt in met magic link.</li>
+            <li>3. Na accepteren staat ie in jouw circle.</li>
+          </ul>
+          <p className="mt-2 text-[11px] text-muted">
+            Tip: wil je 'm zelf testen? Open de link in een privé venster
+            of op een ander apparaat zonder ingelogd account.
+          </p>
+        </GlassCard>
+
+        <div className="flex flex-col gap-3">
+          <Link href="/dashboard" className="contents">
+            <PrimaryButton fullWidth>Terug naar dashboard</PrimaryButton>
+          </Link>
+        </div>
+      </MobilePage>
+    );
   }
 
   return (
     <MobilePage contentClassName="gap-8 pt-[max(env(safe-area-inset-top),3rem)]">
       <PageHeader
-        eyebrow="Invite"
+        eyebrow="Uitnodiging"
         title={
           isInvalid ? (
             <>
@@ -98,7 +142,9 @@ export default async function InvitePage({
         ) : (
           <>
             <Link href={`/login?next=/invite/${code}`} className="contents">
-              <PrimaryButton fullWidth>Inloggen om te accepteren</PrimaryButton>
+              <PrimaryButton fullWidth>
+                Maak account en accepteer
+              </PrimaryButton>
             </Link>
             <Link href="/" className="contents">
               <GhostButton fullWidth>Niet nu</GhostButton>

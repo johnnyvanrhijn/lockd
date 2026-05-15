@@ -53,6 +53,26 @@ export type OnboardingState = {
   privacy: CirclePrivacy;
 };
 
+/**
+ * Pulls a user-friendly message out of anything thrown. Supabase
+ * (PostgrestError) responses are plain objects with a `message` field,
+ * not Error instances; native fetch errors are TypeError; the SDK
+ * occasionally throws Error too. We try them all.
+ */
+function extractErrorMessage(err: unknown): string {
+  if (!err) return "Onbekende fout. Probeer opnieuw.";
+  if (err instanceof Error && err.message) return err.message;
+  if (typeof err === "string") return err;
+  if (typeof err === "object") {
+    const obj = err as Record<string, unknown>;
+    const candidates = [obj.message, obj.error_description, obj.details, obj.hint, obj.code];
+    for (const c of candidates) {
+      if (typeof c === "string" && c.trim()) return c;
+    }
+  }
+  return "Onbekende fout. Probeer opnieuw.";
+}
+
 const DEFAULT_PRIVACY: CirclePrivacy = {
   showStreaks: true,
   showStruggle: true,
@@ -96,11 +116,8 @@ function OnboardingFlow() {
     try {
       await work();
     } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : "Onbekende fout. Probeer opnieuw.";
-      setSaveError(message);
+      console.error("[onboarding] step save failed:", err);
+      setSaveError(extractErrorMessage(err));
       setSaving(false);
       return;
     }
