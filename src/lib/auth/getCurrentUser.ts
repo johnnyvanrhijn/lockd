@@ -1,28 +1,34 @@
 import type { User } from "@supabase/supabase-js";
-import { getSupabaseClient } from "@/lib/supabase/client";
+import { getServerSupabase } from "@/lib/supabase/server";
+import type { Database } from "@/types/database";
+
+type Profile = Database["public"]["Tables"]["profiles"]["Row"];
+
+export type CurrentUser = {
+  user: User;
+  profile: Profile | null;
+};
 
 /**
- * Returns the currently authenticated Supabase user, or `null` if no
- * session is active.
- *
- * Placeholder helper — once auth UI exists this will be the canonical
- * way for client components to ask "who is signed in right now?". Server
- * Components will eventually need an SSR-aware variant.
+ * Server-side: returns the currently authenticated user plus their profile
+ * row, or `null` if no session is active. Use in Server Components and
+ * Route Handlers.
  */
-export async function getCurrentUser(): Promise<User | null> {
-  const supabase = getSupabaseClient();
+export async function getCurrentUser(): Promise<CurrentUser | null> {
+  const supabase = await getServerSupabase();
 
-  const { data, error } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
 
-  if (error) {
-    // AuthSessionMissingError is the expected "not signed in" path —
-    // treat it as a normal null instead of bubbling an error to callers.
-    if (error.name === "AuthSessionMissingError") {
-      return null;
-    }
+  if (error || !user) return null;
 
-    throw error;
-  }
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .maybeSingle();
 
-  return data.user;
+  return { user, profile };
 }
