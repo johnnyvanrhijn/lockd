@@ -1,0 +1,261 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-05-15T00:00:00.000Z",
+  "title": "Design System: LOCKD",
+  "extensions": {
+    "colorMeta": {
+      "purple": {
+        "role": "primary",
+        "displayName": "Iris",
+        "canonical": "oklch(64% 0.227 295)",
+        "tonalRamp": [
+          "oklch(15% 0.06 295)",
+          "oklch(25% 0.10 295)",
+          "oklch(35% 0.15 295)",
+          "oklch(45% 0.20 295)",
+          "oklch(55% 0.23 295)",
+          "oklch(64% 0.227 295)",
+          "oklch(72% 0.182 295)",
+          "oklch(85% 0.10 295)"
+        ]
+      },
+      "purple-bright": {
+        "role": "primary",
+        "displayName": "Iris Bright",
+        "canonical": "oklch(72% 0.182 295)",
+        "tonalRamp": [
+          "oklch(20% 0.05 295)",
+          "oklch(32% 0.10 295)",
+          "oklch(45% 0.14 295)",
+          "oklch(58% 0.17 295)",
+          "oklch(72% 0.182 295)",
+          "oklch(80% 0.14 295)",
+          "oklch(88% 0.08 295)",
+          "oklch(95% 0.03 295)"
+        ]
+      },
+      "background": {
+        "role": "neutral",
+        "displayName": "Background Ink",
+        "canonical": "oklch(8% 0.011 270)",
+        "tonalRamp": [
+          "oklch(4% 0.005 270)",
+          "oklch(8% 0.011 270)",
+          "oklch(13% 0.013 270)",
+          "oklch(18% 0.014 270)",
+          "oklch(28% 0.015 270)",
+          "oklch(45% 0.012 270)",
+          "oklch(65% 0.010 270)",
+          "oklch(85% 0.005 270)"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Surface",
+        "canonical": "oklch(15% 0.013 270)",
+        "tonalRamp": [
+          "oklch(8% 0.010 270)",
+          "oklch(12% 0.012 270)",
+          "oklch(15% 0.013 270)",
+          "oklch(19% 0.014 270)",
+          "oklch(25% 0.015 270)",
+          "oklch(40% 0.013 270)",
+          "oklch(60% 0.010 270)",
+          "oklch(80% 0.005 270)"
+        ]
+      },
+      "surface-elevated": {
+        "role": "neutral",
+        "displayName": "Surface Elevated",
+        "canonical": "oklch(19% 0.014 270)"
+      },
+      "success": {
+        "role": "semantic",
+        "displayName": "Locked-In Green",
+        "canonical": "oklch(80% 0.22 142)"
+      },
+      "warning": {
+        "role": "semantic",
+        "displayName": "Struggling Amber",
+        "canonical": "oklch(74% 0.18 51)"
+      },
+      "danger": {
+        "role": "semantic",
+        "displayName": "Off-Track Coral",
+        "canonical": "oklch(72% 0.16 12)"
+      },
+      "info": {
+        "role": "semantic",
+        "displayName": "Insight Cyan",
+        "canonical": "oklch(82% 0.14 196)"
+      },
+      "foreground": {
+        "role": "neutral",
+        "displayName": "Foreground White",
+        "canonical": "#FFFFFF"
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted Slate",
+        "canonical": "oklch(74% 0.01 285)"
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Hero wordmark and landing-page headlines. One per screen, maximum."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Section heroes inside the app shell."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Card headlines, modal titles, reflection prompts."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default reading text. Foreground for primary copy, Muted for supporting copy."
+      },
+      "label": {
+        "displayName": "Label / Eyebrow",
+        "purpose": "Uppercase tracked labels above sections and over metadata blocks."
+      }
+    },
+    "shadows": [
+      { "name": "card", "value": "0 20px 50px -25px rgba(0, 0, 0, 0.7)", "purpose": "Default ambient lift under a Glass Card." },
+      { "name": "elevated", "value": "0 24px 60px -20px rgba(0, 0, 0, 0.85)", "purpose": "Heavier ambient lift for overlays, sheets, and modals." },
+      { "name": "glow", "value": "0 0 60px -10px rgba(139, 92, 246, 0.45)", "purpose": "Signature Iris halo. The default depth move for LOCKD." },
+      { "name": "glow-strong", "value": "0 0 90px -10px rgba(139, 92, 246, 0.6)", "purpose": "Hero glow for the highest-attention surface on a screen. One per screen, maximum." },
+      { "name": "glow-success", "value": "0 0 60px -15px rgba(74, 222, 128, 0.45)", "purpose": "Success-tinted halo for locked-in confirmation cards." },
+      { "name": "glow-danger", "value": "0 0 60px -15px rgba(251, 113, 133, 0.45)", "purpose": "Danger-tinted halo for relapse acknowledgement and destructive confirmation." },
+      { "name": "nav-lift", "value": "0 20px 60px -20px rgba(0, 0, 0, 0.6)", "purpose": "Floating ambient shadow under the Bottom Navigation." }
+    ],
+    "motion": [
+      { "name": "ease-default", "value": "cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "Default easing for state transitions. Ease-out, never elastic, never bounce." },
+      { "name": "duration-fast", "value": "150ms", "purpose": "Chip selection, hover-state shifts on dense controls." },
+      { "name": "duration-default", "value": "200ms", "purpose": "Button hover, card hover, focus-ring fade. The system's default." },
+      { "name": "duration-bar", "value": "300ms", "purpose": "Progress bar fill animation." },
+      { "name": "press-scale", "value": "0.98", "purpose": "Active-press scale for buttons. Chips use 0.97." }
+    ],
+    "breakpoints": [
+      { "name": "mobile", "value": "430px", "purpose": "The single content column cap. LOCKD does not break out to desktop layouts." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one Iris CTA on a screen. Vertical gradient from Iris Bright to Iris, with an Iris-tinted drop shadow that grows on hover.",
+      "html": "<button class=\"ds-btn-primary\" type=\"button\">Start gratis</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 56px; padding: 0 24px; border: none; border-radius: 12px; font-family: var(--font-geist-sans, ui-sans-serif, system-ui, sans-serif); font-size: 16px; font-weight: 500; letter-spacing: -0.01em; color: #ffffff; background: linear-gradient(to bottom, #a78bfa, #8b5cf6); box-shadow: 0 10px 30px -12px rgba(139, 92, 246, 0.45); cursor: pointer; transition: filter 200ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1), transform 200ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-btn-primary:hover { filter: brightness(1.1); box-shadow: 0 14px 36px -12px rgba(139, 92, 246, 0.55); } .ds-btn-primary:active { transform: scale(0.98); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 10px 30px -12px rgba(139, 92, 246, 0.45), 0 0 0 2px #05060a, 0 0 0 4px rgba(167, 139, 250, 0.7); }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Translucent Surface-Elevated background with backdrop-blur and a hairline border. The companion to Primary when two actions need similar weight.",
+      "html": "<button class=\"ds-btn-secondary\" type=\"button\">Bekijk hoe het werkt</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 56px; padding: 0 24px; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; font-family: var(--font-geist-sans, ui-sans-serif, system-ui, sans-serif); font-size: 16px; font-weight: 500; letter-spacing: -0.01em; color: #ffffff; background: rgba(21, 24, 35, 0.7); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); cursor: pointer; transition: background 200ms cubic-bezier(0.4, 0, 0.2, 1), border-color 200ms cubic-bezier(0.4, 0, 0.2, 1), transform 200ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-btn-secondary:hover { background: rgba(21, 24, 35, 1); border-color: rgba(255, 255, 255, 0.14); } .ds-btn-secondary:active { transform: scale(0.98); } .ds-btn-secondary:focus-visible { outline: none; box-shadow: 0 0 0 2px #05060a, 0 0 0 4px rgba(167, 139, 250, 0.7); }"
+    },
+    {
+      "name": "Glass Card",
+      "kind": "card",
+      "refersTo": "card-glass",
+      "description": "LOCKD's universal container. Translucent Surface over the background, hairline border, ambient drop shadow, 18px radius.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card__eyebrow\">Vandaag</div><div class=\"ds-card__title\">Het was moeilijk met iets?</div><div class=\"ds-card__body\">Praat erover voordat je de neiging volgt.</div></div>",
+      "css": ".ds-card { position: relative; padding: 20px; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 18px; background: rgba(16, 18, 26, 0.7); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); box-shadow: 0 20px 50px -25px rgba(0, 0, 0, 0.7); color: #ffffff; font-family: var(--font-geist-sans, ui-sans-serif, system-ui, sans-serif); } .ds-card__eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.25em; text-transform: uppercase; color: #a78bfa; margin-bottom: 8px; } .ds-card__title { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 8px; } .ds-card__body { font-size: 14px; line-height: 1.55; color: #a1a1aa; }"
+    },
+    {
+      "name": "Glass Card (Iris)",
+      "kind": "card",
+      "refersTo": "card-glass-purple",
+      "description": "Iris-tinted variant of Glass Card with a diagonal Iris gradient and soft glow. Used for the highest-attention card on a screen.",
+      "html": "<div class=\"ds-card-purple\"><div class=\"ds-card-purple__title\">Je urges pieken meestal rond <span class=\"ds-emph\">23:00</span>.</div><div class=\"ds-card-purple__body\">In de afgelopen 14 dagen vielen 7 van de 10 urges tussen 22:30 en 00:30.</div></div>",
+      "css": ".ds-card-purple { position: relative; padding: 20px; border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 18px; background: linear-gradient(to bottom right, rgba(139, 92, 246, 0.15), rgba(16, 18, 26, 0.7) 60%, rgba(16, 18, 26, 0.7)); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); box-shadow: 0 0 60px -10px rgba(139, 92, 246, 0.45); color: #ffffff; font-family: var(--font-geist-sans, ui-sans-serif, system-ui, sans-serif); } .ds-card-purple__title { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.25; margin-bottom: 8px; } .ds-card-purple__body { font-size: 14px; line-height: 1.55; color: #a1a1aa; } .ds-emph { color: #a78bfa; }"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "chip",
+      "refersTo": "status-badge",
+      "description": "Pill with a leading filled dot. The default communication primitive for behavioral state (locked_in, struggling, off_track).",
+      "html": "<span class=\"ds-badge ds-badge--success\"><span class=\"ds-badge__dot\"></span>Locked in</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 9999px; border: 1px solid; font-family: var(--font-geist-sans, ui-sans-serif, system-ui, sans-serif); font-size: 12px; font-weight: 500; letter-spacing: -0.01em; } .ds-badge__dot { width: 6px; height: 6px; border-radius: 9999px; } .ds-badge--success { background: rgba(74, 222, 128, 0.12); color: #4ade80; border-color: rgba(74, 222, 128, 0.25); } .ds-badge--success .ds-badge__dot { background: #4ade80; } .ds-badge--warning { background: rgba(251, 146, 60, 0.12); color: #fb923c; border-color: rgba(251, 146, 60, 0.25); } .ds-badge--warning .ds-badge__dot { background: #fb923c; } .ds-badge--danger { background: rgba(251, 113, 133, 0.12); color: #fb7185; border-color: rgba(251, 113, 133, 0.25); } .ds-badge--danger .ds-badge__dot { background: #fb7185; } .ds-badge--clean { background: rgba(139, 92, 246, 0.15); color: #a78bfa; border-color: rgba(139, 92, 246, 0.3); } .ds-badge--clean .ds-badge__dot { background: #a78bfa; }"
+    },
+    {
+      "name": "Selectable Chip",
+      "kind": "chip",
+      "refersTo": "chip-selectable",
+      "description": "Pill-shaped multi-select affordance. At rest: Surface-Glass + Muted. Selected: Iris border, Iris-tinted background, Iris-Bright foreground.",
+      "html": "<button class=\"ds-chip\" type=\"button\">Rust</button><button class=\"ds-chip ds-chip--selected\" type=\"button\" aria-checked=\"true\">Focus</button><button class=\"ds-chip\" type=\"button\">Discipline</button>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 9999px; background: rgba(255, 255, 255, 0.04); color: #a1a1aa; font-family: var(--font-geist-sans, ui-sans-serif, system-ui, sans-serif); font-size: 14px; font-weight: 500; letter-spacing: -0.01em; cursor: pointer; transition: color 150ms cubic-bezier(0.4, 0, 0.2, 1), border-color 150ms cubic-bezier(0.4, 0, 0.2, 1), background 150ms cubic-bezier(0.4, 0, 0.2, 1), transform 150ms cubic-bezier(0.4, 0, 0.2, 1); margin-right: 8px; } .ds-chip:hover { color: #ffffff; border-color: rgba(255, 255, 255, 0.14); } .ds-chip:active { transform: scale(0.97); } .ds-chip:focus-visible { outline: none; box-shadow: 0 0 0 2px #05060a, 0 0 0 4px rgba(167, 139, 250, 0.7); } .ds-chip--selected { border-color: #8b5cf6; background: rgba(139, 92, 246, 0.15); color: #a78bfa; }"
+    },
+    {
+      "name": "Progress Bar",
+      "kind": "custom",
+      "refersTo": "progress-bar",
+      "description": "8px Surface-Elevated track with an Iris-Bright→Iris gradient fill. Animates fill change in 300ms.",
+      "html": "<div class=\"ds-progress\"><div class=\"ds-progress__label\"><span>Week voortgang</span><span class=\"ds-progress__value\">68/100</span></div><div class=\"ds-progress__track\" role=\"progressbar\" aria-valuenow=\"68\" aria-valuemin=\"0\" aria-valuemax=\"100\"><div class=\"ds-progress__fill\" style=\"width: 68%;\"></div></div></div>",
+      "css": ".ds-progress { display: flex; flex-direction: column; gap: 6px; font-family: var(--font-geist-sans, ui-sans-serif, system-ui, sans-serif); } .ds-progress__label { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #a1a1aa; } .ds-progress__value { font-weight: 500; color: #ffffff; } .ds-progress__track { height: 8px; width: 100%; border-radius: 9999px; background: #151823; overflow: hidden; } .ds-progress__fill { height: 100%; border-radius: 9999px; background: linear-gradient(to right, #a78bfa, #8b5cf6); transition: width 300ms cubic-bezier(0.4, 0, 0.2, 1); }"
+    },
+    {
+      "name": "Bottom Navigation",
+      "kind": "nav",
+      "refersTo": "bottom-nav",
+      "description": "Floating 32px-radius bar with backdrop-blur, hairline border, and ambient black drop-shadow. Five tabs. Active tab is Iris Bright.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Hoofdnavigatie\"><button class=\"ds-nav__item ds-nav__item--active\" type=\"button\"><svg class=\"ds-nav__icon\" viewBox=\"0 0 24 24\" fill=\"none\"><path d=\"M4 11.5L12 5l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5H14V15h-4v5.5H5.5A1.5 1.5 0 0 1 4 19v-7.5Z\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linejoin=\"round\"/></svg><span>Overzicht</span></button><button class=\"ds-nav__item\" type=\"button\"><svg class=\"ds-nav__icon\" viewBox=\"0 0 24 24\" fill=\"none\"><path d=\"M5 19V5M5 19h14M9 15v-3M13 15V9M17 15v-5\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\"/></svg><span>Statistieken</span></button><button class=\"ds-nav__item\" type=\"button\"><svg class=\"ds-nav__icon\" viewBox=\"0 0 24 24\" fill=\"none\"><circle cx=\"9\" cy=\"9\" r=\"3.2\" stroke=\"currentColor\" stroke-width=\"1.6\"/><circle cx=\"16\" cy=\"14\" r=\"2.6\" stroke=\"currentColor\" stroke-width=\"1.6\"/><path d=\"M3.5 19c1-2.6 3.2-4 5.5-4s4.5 1.4 5.5 4M14 19c.6-1.6 2-2.5 3.5-2.5s2.9.9 3.5 2.5\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\"/></svg><span>Circle</span></button><button class=\"ds-nav__item\" type=\"button\"><svg class=\"ds-nav__icon\" viewBox=\"0 0 24 24\" fill=\"none\"><path d=\"M6 4h9l4 4v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z\" stroke=\"currentColor\" stroke-width=\"1.6\"/><path d=\"M14 4v4h4M8 13h8M8 17h5\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\"/></svg><span>Reflecties</span></button><button class=\"ds-nav__item\" type=\"button\"><svg class=\"ds-nav__icon\" viewBox=\"0 0 24 24\" fill=\"none\"><circle cx=\"12\" cy=\"9\" r=\"3.5\" stroke=\"currentColor\" stroke-width=\"1.6\"/><path d=\"M5 19c1.4-3 4-4.5 7-4.5s5.6 1.5 7 4.5\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\"/></svg><span>Profiel</span></button></nav>",
+      "css": ".ds-nav { display: flex; align-items: stretch; gap: 4px; width: 100%; max-width: 430px; padding: 8px; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 32px; background: rgba(16, 18, 26, 0.8); backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px); box-shadow: 0 20px 60px -20px rgba(0, 0, 0, 0.6); font-family: var(--font-geist-sans, ui-sans-serif, system-ui, sans-serif); } .ds-nav__item { flex: 1; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; height: 56px; padding: 0 4px; border: none; background: transparent; color: #a1a1aa; font-size: 11px; font-weight: 500; cursor: pointer; border-radius: 24px; transition: color 200ms cubic-bezier(0.4, 0, 0.2, 1), background 200ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-nav__item:hover { color: #ffffff; } .ds-nav__item:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(167, 139, 250, 0.7); } .ds-nav__icon { width: 22px; height: 22px; } .ds-nav__item--active { color: #a78bfa; background: rgba(139, 92, 246, 0.12); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Steady Hand",
+    "overview": "LOCKD is the calm voice in a loud moment. The interface is a steady hand on the user's shoulder when everything else is pulling them toward the urge: late at night, alone, scrolling, stressed. Every surface is restrained, dark, and deliberately understated, with one signal color (Iris) that glows only where attention is earned. There is no ornamentation that doesn't carry meaning. There is no copy that doesn't carry weight. The system is mobile-only. The viewport caps at 430px and never opens up to a desktop dashboard layout. Glass surfaces sit on a near-black ground with subtle radial gradients of Iris behind the content, so the screen feels lit from inside rather than painted on. Shadow is rarely structural; it is almost always glow. LOCKD explicitly rejects the SaaS-dashboard reflex, the therapy-app reflex, the habit-tracker reflex, and the social-feed reflex. It looks like a private tool that takes itself seriously.",
+    "keyCharacteristics": [
+      "Single-column mobile shell capped at 430px. No multi-pane layouts, ever.",
+      "Near-black ground with Iris glow. Background #05060A lit by two fixed radial gradients of Iris (top center, bottom right).",
+      "Glass card as the default surface. Translucent surface tone over background, soft border, large radius (18px), ambient drop-shadow.",
+      "Iris is the only attention color. Solid Iris carries CTAs, active states, progress fills, and inline word emphasis inside headings.",
+      "Inline word emphasis is the signature typographic move: a single Iris-colored word inside an otherwise white heading.",
+      "Type is system-stack Geist. No display/body pairing, no custom display font. One family, tight scale.",
+      "Glow over hard shadow. Elevation is a soft colored glow, not a structural drop-shadow."
+    ],
+    "rules": [
+      { "name": "The One Voice Rule", "body": "Iris carries the attention layer and nothing else. If a screen has more than one 'look-at-me' Iris element, one is wrong.", "section": "colors" },
+      { "name": "The Inline Emphasis Rule", "body": "Headings carry a single Iris-colored word inside an otherwise white sentence. Never two words. Never the whole sentence. Never gradient text.", "section": "colors" },
+      { "name": "The Semantic-Color Sanctity Rule", "body": "Success Green, Warning Amber, Danger Coral, Info Cyan never appear as decorative backgrounds, gradient stops, or icon tints unrelated to their meaning.", "section": "colors" },
+      { "name": "The Single-Family Rule", "body": "One typeface across the entire product. No display/body pairing. No serif. No script. Hierarchy comes from scale + weight + tracking.", "section": "typography" },
+      { "name": "The Tight-Headings, Loose-Labels Rule", "body": "Tracking is negative on headlines and positive (and uppercase) on labels. The contrast between -0.02em headlines and 0.25em labels carries secondary hierarchy.", "section": "typography" },
+      { "name": "The Distress-Readability Rule", "body": "Primary CTA labels, 'Ik struggle nu' copy, and any text on the urge flow stays at weight 500+ and size 14px+. Thin display weights are forbidden where a user might need to read fast in a vulnerable moment.", "section": "typography" },
+      { "name": "The Glow-Over-Shadow Rule", "body": "When in doubt, reach for --shadow-glow (Iris) before --shadow-elevated (black). LOCKD's depth is the radiance of the brand color, not a stack of layered paper.", "section": "elevation" },
+      { "name": "The One-Halo Rule", "body": "A screen has at most one element wearing the strong glow. Multiple glowing elements compete and dilute the 'look here' signal.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do use Iris on the one most important action of a screen, and let everything else be neutral.",
+      "Do emphasize a single word in a heading with Iris instead of bolding, underlining, or coloring the whole line.",
+      "Do reach for --shadow-glow before --shadow-elevated when an element needs to lift; glow is LOCKD's depth.",
+      "Do cap content at max-w-[430px] and keep the layout single-column. The product is mobile-only.",
+      "Do use Glass Card with default padding=md as the universal container. Vary the tone rather than inventing a new card type.",
+      "Do use the system focus ring on every interactive component. Consistency IS the affordance.",
+      "Do keep tap targets at 44px minimum, especially on the urge flow.",
+      "Do keep semantic colors sacred to their meaning. Green is for locked-in. Coral is for off-track. Cyan is for info.",
+      "Do respect prefers-reduced-motion. Disable ambient gradient drift, glow pulses, and progress-bar fill animation when set.",
+      "Do name the brand purple 'Iris' in design conversation and PR titles. The token slug stays purple for code compatibility."
+    ],
+    "donts": [
+      "Don't use raw #000 or #fff as a new color outside the token set. Foreground is --color-foreground, background is --color-background.",
+      "Don't use gradient text (bg-clip-text text-transparent). The current home page applies a gradient to the 'D' of LOCKD; that is a legacy violation and will be removed.",
+      "Don't use side-stripe borders on cards, list items, callouts, or alerts. Use full borders, background tints, leading Icon Badges, or nothing.",
+      "Don't nest cards. A Glass Card inside a Glass Card is always wrong; flatten with a divided list, Toggle Row, or Icon Badge prefix.",
+      "Don't introduce a second display typeface or a serif. One family.",
+      "Don't ship a stat-card grid of identical metric tiles. That's the SaaS-dashboard reflex named in PRODUCT.md as an anti-reference.",
+      "Don't style accountability features as a feed. No avatar grids, no comment rows, no like buttons. The Circle is private and signal-based.",
+      "Don't use motion that doesn't convey state. No decorative entrance choreography, no bouncing, no elastic curves. Ease-out only.",
+      "Don't use heavy ambient drop-shadow when a glow would do the work; LOCKD lights from inside, not from above.",
+      "Don't put Coral, Amber, or any semantic color on a CTA that isn't destructive or critical. The Primary Button is Iris.",
+      "Don't invent button shapes. All buttons are --radius-sm (12px). Pill buttons are reserved for chips and badges.",
+      "Don't introduce glassmorphism on a non-card surface. Backdrop-blur is only for Glass Cards, the Bottom Nav, and the Secondary Button.",
+      "Don't translate UI copy to English in product surfaces. LOCKD ships in Dutch first; second person, informal (je/jij), present tense."
+    ]
+  }
+}
