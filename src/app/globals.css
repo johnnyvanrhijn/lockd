@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #07060a;
+  --color-surface: #121018;
+  --color-surface-elevated: #1a1722;
+  --color-border-subtle: rgba(255, 255, 255, 0.08);
+  --color-border-strong: rgba(255, 255, 255, 0.14);
+
+  --color-purple: #6d3df5;
+  --color-purple-bright: #a78bfa;
+  --color-purple-glow: rgba(125, 73, 247, 0.45);
+
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
+  --color-danger: #f87171;
+
+  --color-foreground: #f5f3ff;
+  --color-muted: #8b8597;
+
+  --radius-card: 1.25rem;
+  --radius-button: 0.875rem;
+
+  --shadow-glow: 0 0 60px -10px rgba(125, 73, 247, 0.45);
+  --shadow-card: 0 20px 50px -25px rgba(0, 0, 0, 0.7);
+}
+
+html,
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family:
+    var(--font-geist-sans),
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background-image:
+    radial-gradient(
+      ellipse 80% 60% at 50% -10%,
+      rgba(125, 73, 247, 0.25),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 60% 50% at 100% 100%,
+      rgba(167, 139, 250, 0.12),
+      transparent 70%
+    );
+  background-attachment: fixed;
+}
