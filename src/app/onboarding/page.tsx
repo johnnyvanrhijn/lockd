@@ -6,6 +6,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  type ReactNode,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase/client";
@@ -86,6 +87,25 @@ function OnboardingFlow() {
   const [state, setState] = useState<OnboardingState>(DEFAULT_STATE);
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Wrap a save+advance pair: surface errors instead of advancing silently.
+  const runStep = useCallback(async (work: () => Promise<void>) => {
+    setSaveError(null);
+    setSaving(true);
+    try {
+      await work();
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Onbekende fout. Probeer opnieuw.";
+      setSaveError(message);
+      setSaving(false);
+      return;
+    }
+    setSaving(false);
+  }, []);
 
   // Load existing data on mount
   useEffect(() => {
@@ -167,15 +187,27 @@ function OnboardingFlow() {
     [router, totalSteps],
   );
 
-  const saveProfileDisplayName = useCallback(async (name: string) => {
+  const requireUserId = useCallback(async (): Promise<string> => {
     const supabase = getSupabaseClient();
     const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) return;
-    await supabase
-      .from("profiles")
-      .update({ display_name: name })
-      .eq("id", userData.user.id);
+    if (!userData.user) {
+      throw new Error("Niet ingelogd. Vernieuwen en opnieuw inloggen.");
+    }
+    return userData.user.id;
   }, []);
+
+  const saveProfileDisplayName = useCallback(
+    async (name: string) => {
+      const supabase = getSupabaseClient();
+      const userId = await requireUserId();
+      const { error } = await supabase
+        .from("profiles")
+        .update({ display_name: name })
+        .eq("id", userId);
+      if (error) throw error;
+    },
+    [requireUserId],
+  );
 
   const saveResponses = useCallback(
     async (
@@ -192,142 +224,153 @@ function OnboardingFlow() {
       }>,
     ) => {
       const supabase = getSupabaseClient();
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) return;
-      await supabase
+      const userId = await requireUserId();
+      const { error } = await supabase
         .from("onboarding_responses")
-        .upsert({ user_id: userData.user.id, ...patch }, { onConflict: "user_id" });
+        .upsert(
+          { user_id: userId, ...patch },
+          { onConflict: "user_id" },
+        );
+      if (error) throw error;
     },
-    [],
+    [requireUserId],
   );
 
-  const savePrivacy = useCallback(async (privacy: CirclePrivacy) => {
-    const supabase = getSupabaseClient();
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) return;
-    await supabase
-      .from("profiles")
-      .update({ circle_privacy: privacy })
-      .eq("id", userData.user.id);
-  }, []);
+  const savePrivacy = useCallback(
+    async (privacy: CirclePrivacy) => {
+      const supabase = getSupabaseClient();
+      const userId = await requireUserId();
+      const { error } = await supabase
+        .from("profiles")
+        .update({ circle_privacy: privacy })
+        .eq("id", userId);
+      if (error) throw error;
+    },
+    [requireUserId],
+  );
 
   const completeOnboarding = useCallback(async () => {
     const supabase = getSupabaseClient();
-    await supabase.rpc("complete_onboarding");
-    router.push("/dashboard");
-  }, [router]);
+    const { error } = await supabase.rpc("complete_onboarding");
+    if (error) throw error;
+    // Hard navigation forces the proxy to re-evaluate the session and
+    // profile state with fresh cookies, sidestepping any client-router
+    // timing issues where the proxy still sees onboarded_at = null.
+    window.location.assign("/dashboard");
+  }, []);
 
   const onBack = useCallback(() => {
     if (step > 1) goToStep(step - 1);
   }, [goToStep, step]);
 
   // Step handlers — each "advance" optimistically updates local state and
-  // saves to Supabase, then routes forward.
+  // saves to Supabase, then routes forward. If the save throws (e.g.
+  // network error, RLS rejection), runStep keeps us on the current step
+  // and surfaces the error so the user can retry.
   const onSplashNext = useCallback(
-    async (display_name: string) => {
-      setSaving(true);
-      setState((s) => ({ ...s, display_name }));
-      await saveProfileDisplayName(display_name);
-      setSaving(false);
-      goToStep(2);
-    },
-    [goToStep, saveProfileDisplayName],
+    (display_name: string) =>
+      runStep(async () => {
+        await saveProfileDisplayName(display_name);
+        setState((s) => ({ ...s, display_name }));
+        goToStep(2);
+      }),
+    [goToStep, runStep, saveProfileDisplayName],
   );
 
   const onFocusNext = useCallback(
-    async (focus_habits: string[]) => {
-      setSaving(true);
-      setState((s) => ({ ...s, focus_habits }));
-      await saveResponses({ focus_habits });
-      setSaving(false);
-      goToStep(3);
-    },
-    [goToStep, saveResponses],
+    (focus_habits: string[]) =>
+      runStep(async () => {
+        await saveResponses({ focus_habits });
+        setState((s) => ({ ...s, focus_habits }));
+        goToStep(3);
+      }),
+    [goToStep, runStep, saveResponses],
   );
 
   const onWaaromNext = useCallback(
-    async (desired_outcomes: string[]) => {
-      setSaving(true);
-      setState((s) => ({ ...s, desired_outcomes }));
-      await saveResponses({ desired_outcomes });
-      setSaving(false);
-      goToStep(4);
-    },
-    [goToStep, saveResponses],
+    (desired_outcomes: string[]) =>
+      runStep(async () => {
+        await saveResponses({ desired_outcomes });
+        setState((s) => ({ ...s, desired_outcomes }));
+        goToStep(4);
+      }),
+    [goToStep, runStep, saveResponses],
   );
 
   const onPatroonNext = useCallback(
-    async (risk_times: string[], risk_situations: string[]) => {
-      setSaving(true);
-      setState((s) => ({ ...s, risk_times, risk_situations }));
-      await saveResponses({ risk_times, risk_situations });
-      setSaving(false);
-      goToStep(5);
-    },
-    [goToStep, saveResponses],
+    (risk_times: string[], risk_situations: string[]) =>
+      runStep(async () => {
+        await saveResponses({ risk_times, risk_situations });
+        setState((s) => ({ ...s, risk_times, risk_situations }));
+        goToStep(5);
+      }),
+    [goToStep, runStep, saveResponses],
   );
 
   const onTriggersNext = useCallback(
-    async (triggers: string[]) => {
-      setSaving(true);
-      setState((s) => ({ ...s, triggers }));
-      await saveResponses({ triggers });
-      setSaving(false);
-      goToStep(6);
-    },
-    [goToStep, saveResponses],
+    (triggers: string[]) =>
+      runStep(async () => {
+        await saveResponses({ triggers });
+        setState((s) => ({ ...s, triggers }));
+        goToStep(6);
+      }),
+    [goToStep, runStep, saveResponses],
   );
 
   const onSupportNext = useCallback(
-    async (
+    (
       tone_of_voice: OnboardingState["tone_of_voice"],
       support_modes: string[],
       active_intervention: boolean,
-    ) => {
-      setSaving(true);
-      setState((s) => ({
-        ...s,
-        tone_of_voice,
-        support_modes,
-        active_intervention,
-      }));
-      await saveResponses({
-        tone_of_voice,
-        support_modes,
-        active_intervention,
-      });
-      setSaving(false);
-      goToStep(7);
-    },
-    [goToStep, saveResponses],
+    ) =>
+      runStep(async () => {
+        await saveResponses({
+          tone_of_voice,
+          support_modes,
+          active_intervention,
+        });
+        setState((s) => ({
+          ...s,
+          tone_of_voice,
+          support_modes,
+          active_intervention,
+        }));
+        goToStep(7);
+      }),
+    [goToStep, runStep, saveResponses],
   );
 
   const onAccountabilityNext = useCallback(
-    async (accountability_mode: AccountabilityMode) => {
-      setSaving(true);
-      setState((s) => ({ ...s, accountability_mode }));
-      await saveResponses({ accountability_mode });
-      setSaving(false);
-      // Solo → step 8 (summary in solo numbering). Buddies → step 8 (invite).
-      goToStep(8);
-    },
-    [goToStep, saveResponses],
+    (accountability_mode: AccountabilityMode) =>
+      runStep(async () => {
+        await saveResponses({ accountability_mode });
+        setState((s) => ({ ...s, accountability_mode }));
+        goToStep(8);
+      }),
+    [goToStep, runStep, saveResponses],
   );
 
   const onInviteNext = useCallback(() => {
-    // No state change; just advance.
+    setSaveError(null);
     goToStep(9);
   }, [goToStep]);
 
   const onSignalsNext = useCallback(
-    async (privacy: CirclePrivacy) => {
-      setSaving(true);
-      setState((s) => ({ ...s, privacy }));
-      await savePrivacy(privacy);
-      setSaving(false);
-      goToStep(10);
-    },
-    [goToStep, savePrivacy],
+    (privacy: CirclePrivacy) =>
+      runStep(async () => {
+        await savePrivacy(privacy);
+        setState((s) => ({ ...s, privacy }));
+        goToStep(10);
+      }),
+    [goToStep, runStep, savePrivacy],
+  );
+
+  const onComplete = useCallback(
+    () =>
+      runStep(async () => {
+        await completeOnboarding();
+      }),
+    [completeOnboarding, runStep],
   );
 
   if (!loaded) {
@@ -349,8 +392,35 @@ function OnboardingFlow() {
   // Step routing
   const isBuddies = state.accountability_mode === "buddies";
 
+  const errorToast = saveError ? (
+    <div
+      role="alert"
+      className="pointer-events-none fixed inset-x-0 top-[max(env(safe-area-inset-top),0.75rem)] z-50 flex justify-center px-4"
+    >
+      <div className="pointer-events-auto flex items-start gap-3 rounded-[var(--radius-md)] border border-danger/40 bg-danger/15 px-4 py-3 backdrop-blur-xl">
+        <span className="mt-0.5 inline-block h-2 w-2 shrink-0 rounded-full bg-danger" />
+        <p className="text-xs leading-relaxed text-danger">{saveError}</p>
+        <button
+          type="button"
+          onClick={() => setSaveError(null)}
+          aria-label="Sluit melding"
+          className="-mr-1 text-danger/70 hover:text-danger"
+        >
+          ×
+        </button>
+      </div>
+    </div>
+  ) : null;
+
+  const wrap = (node: ReactNode) => (
+    <>
+      {errorToast}
+      {node}
+    </>
+  );
+
   if (step === 1) {
-    return (
+    return wrap(
       <StepSplash
         total={totalSteps}
         current={1}
@@ -361,7 +431,7 @@ function OnboardingFlow() {
     );
   }
   if (step === 2) {
-    return (
+    return wrap(
       <StepFocus
         total={totalSteps}
         current={2}
@@ -369,11 +439,11 @@ function OnboardingFlow() {
         saving={saving}
         onBack={onBack}
         onNext={onFocusNext}
-      />
+      />,
     );
   }
   if (step === 3) {
-    return (
+    return wrap(
       <StepWaarom
         total={totalSteps}
         current={3}
@@ -381,11 +451,11 @@ function OnboardingFlow() {
         saving={saving}
         onBack={onBack}
         onNext={onWaaromNext}
-      />
+      />,
     );
   }
   if (step === 4) {
-    return (
+    return wrap(
       <StepPatroon
         total={totalSteps}
         current={4}
@@ -394,11 +464,11 @@ function OnboardingFlow() {
         saving={saving}
         onBack={onBack}
         onNext={onPatroonNext}
-      />
+      />,
     );
   }
   if (step === 5) {
-    return (
+    return wrap(
       <StepTriggers
         total={totalSteps}
         current={5}
@@ -406,11 +476,11 @@ function OnboardingFlow() {
         saving={saving}
         onBack={onBack}
         onNext={onTriggersNext}
-      />
+      />,
     );
   }
   if (step === 6) {
-    return (
+    return wrap(
       <StepSupport
         total={totalSteps}
         current={6}
@@ -420,11 +490,11 @@ function OnboardingFlow() {
         saving={saving}
         onBack={onBack}
         onNext={onSupportNext}
-      />
+      />,
     );
   }
   if (step === 7) {
-    return (
+    return wrap(
       <StepAccountability
         total={totalSteps}
         current={7}
@@ -432,23 +502,23 @@ function OnboardingFlow() {
         saving={saving}
         onBack={onBack}
         onNext={onAccountabilityNext}
-      />
+      />,
     );
   }
 
   // Step 8: solo summary OR buddies invite
   if (step === 8) {
     if (isBuddies) {
-      return (
+      return wrap(
         <StepBuddyInvite
           total={totalSteps}
           current={8}
           onBack={onBack}
           onNext={onInviteNext}
-        />
+        />,
       );
     }
-    return (
+    return wrap(
       <StepSummary
         total={totalSteps}
         current={8}
@@ -456,14 +526,14 @@ function OnboardingFlow() {
         saving={saving}
         onBack={onBack}
         onEditStep={goToStep}
-        onComplete={completeOnboarding}
-      />
+        onComplete={onComplete}
+      />,
     );
   }
 
   // Step 9 only exists for buddies path = signals
   if (step === 9 && isBuddies) {
-    return (
+    return wrap(
       <StepSignals
         total={totalSteps}
         current={9}
@@ -471,13 +541,13 @@ function OnboardingFlow() {
         saving={saving}
         onBack={onBack}
         onNext={onSignalsNext}
-      />
+      />,
     );
   }
 
   // Step 10: buddies summary
   if (step === 10 && isBuddies) {
-    return (
+    return wrap(
       <StepSummary
         total={totalSteps}
         current={10}
@@ -485,8 +555,8 @@ function OnboardingFlow() {
         saving={saving}
         onBack={onBack}
         onEditStep={goToStep}
-        onComplete={completeOnboarding}
-      />
+        onComplete={onComplete}
+      />,
     );
   }
 

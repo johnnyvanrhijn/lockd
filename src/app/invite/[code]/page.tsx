@@ -63,14 +63,14 @@ export default async function InvitePage({
               <span className="text-purple-bright">
                 {preview!.inviter_display_name ?? "Iemand"}
               </span>{" "}
-              vraagt jou om buddy.
+              heeft je uitgenodigd.
             </>
           )
         }
         subtitle={
           isInvalid
             ? "De link is verlopen of ingetrokken. Vraag de inviter om een nieuwe."
-            : "Buddies zien elkaars streaks en struggle signals. Geen feed, geen oordeel. Klein en privé."
+            : "Als buddy zie je elkaars streaks en struggle signals. Geen feed, geen oordeel. Klein en privé."
         }
       />
 

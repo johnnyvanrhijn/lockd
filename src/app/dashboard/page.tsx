@@ -1,16 +1,20 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { IconButton } from "@/components/ui/IconButton";
 import { CircularProgress } from "@/components/ui/CircularProgress";
 import { WeekStreakDots, type WeekDay } from "@/components/ui/WeekStreakDots";
 import { StreakHabitRow } from "@/components/ui/StreakHabitRow";
+import { LoadingSkeleton } from "@/components/ui/LoadingSkeleton";
 import {
   BottomNav,
   type BottomNavItem,
 } from "@/components/navigation/BottomNav";
+import { getSupabaseClient } from "@/lib/supabase/client";
+import { HABIT_OPTIONS } from "@/lib/onboarding/options";
 import { cn } from "@/lib/utils/cn";
 
 /* -------------------------------------------------------------------------- */
@@ -331,64 +335,44 @@ function ProfileNavIcon() {
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Data (placeholder — replace with real data once habits / streak APIs land) */
+/*  Habit metadata                                                            */
+/*                                                                            */
+/*  The dashboard displays the user's selected focus_habits from onboarding   */
+/*  as a habit list. Each option from HABIT_OPTIONS gets a "do not …" label   */
+/*  and an icon. New options added to HABIT_OPTIONS without an entry here     */
+/*  fall back to FlameIcon and the raw label.                                 */
 /* -------------------------------------------------------------------------- */
 
-const WEEK: ReadonlyArray<WeekDay> = [
-  { letter: "M", status: "complete" },
-  { letter: "D", status: "complete" },
-  { letter: "W", status: "complete" },
-  { letter: "D", status: "complete" },
-  { letter: "V", status: "complete" },
-  { letter: "Z", status: "complete" },
-  { letter: "Z", status: "pending" },
-];
-
-type Habit = {
-  id: string;
-  name: string;
-  since: string;
-  days: number;
+type HabitMeta = {
+  /** Imperative display name on the dashboard (e.g. "Niet gerookt"). */
+  display: string;
   icon: ReactNode;
 };
 
-const HABITS: ReadonlyArray<Habit> = [
-  {
-    id: "smoking",
-    name: "Niet gerookt",
-    since: "Sinds 12 mei",
-    days: 9,
-    icon: <CigaretteIcon />,
-  },
-  {
-    id: "binge",
-    name: "Geen vreetbuien",
-    since: "Sinds 14 mei",
-    days: 7,
-    icon: <BurgerIcon />,
-  },
-  {
-    id: "porn",
-    name: "Geen porno",
-    since: "Sinds 11 mei",
-    days: 8,
-    icon: <AdultIcon />,
-  },
-  {
-    id: "doomscroll",
-    name: "Niet doomscrollen",
-    since: "Vandaag",
-    days: 6,
-    icon: <PhoneIcon />,
-  },
-  {
-    id: "alcohol",
-    name: "Geen alcohol",
-    since: "Vandaag",
-    days: 3,
-    icon: <CupIcon />,
-  },
-];
+const HABIT_META: Record<string, HabitMeta> = {
+  smoking:      { display: "Niet gerookt",        icon: <CigaretteIcon /> },
+  porn:         { display: "Geen porno",          icon: <AdultIcon /> },
+  weed:         { display: "Geen wiet",           icon: <FlameIcon /> },
+  gambling:     { display: "Niet gegokt",         icon: <FlameIcon /> },
+  alcohol:      { display: "Geen alcohol",        icon: <CupIcon /> },
+  doomscroll:   { display: "Niet doomscrollen",   icon: <PhoneIcon /> },
+  binge_eating: { display: "Geen vreetbuien",     icon: <BurgerIcon /> },
+  overspending: { display: "Niet impulsief uitgegeven", icon: <FlameIcon /> },
+  snoozing:     { display: "Niet gesnoozed",      icon: <FlameIcon /> },
+  nail_biting:  { display: "Niet aan nagels",     icon: <FlameIcon /> },
+  caffeine:     { display: "Minder cafeïne",      icon: <FlameIcon /> },
+  social_media: { display: "Minder social media", icon: <PhoneIcon /> },
+};
+
+function habitMeta(id: string): HabitMeta {
+  const found = HABIT_META[id];
+  if (found) return found;
+  const fallbackLabel =
+    HABIT_OPTIONS.find((o) => o.id === id)?.label ?? id;
+  return { display: fallbackLabel, icon: <FlameIcon /> };
+}
+
+const WEEK_LETTERS = ["M", "D", "W", "D", "V", "Z", "Z"] as const;
 
 const NAV_ITEMS: ReadonlyArray<BottomNavItem> = [
   { id: "overview", label: "Overzicht", icon: <HomeNavIcon /> },
@@ -402,76 +386,150 @@ const NAV_ITEMS: ReadonlyArray<BottomNavItem> = [
 /* -------------------------------------------------------------------------- */
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("overview");
   const [checkedHabits, setCheckedHabits] = useState<ReadonlyArray<string>>([]);
+
+  // Real data fetched from Supabase on mount.
+  const [loaded, setLoaded] = useState(false);
+  const [displayName, setDisplayName] = useState<string | null>(null);
+  const [focusHabits, setFocusHabits] = useState<string[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const supabase = getSupabaseClient();
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) {
+        router.replace("/login");
+        return;
+      }
+      const [profileRes, responsesRes] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("display_name")
+          .eq("id", userData.user.id)
+          .maybeSingle(),
+        supabase
+          .from("onboarding_responses")
+          .select("focus_habits")
+          .eq("user_id", userData.user.id)
+          .maybeSingle(),
+      ]);
+      if (cancelled) return;
+      setDisplayName(profileRes.data?.display_name ?? null);
+      setFocusHabits(responsesRes.data?.focus_habits ?? []);
+      setLoaded(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   const toggleHabit = (id: string) =>
     setCheckedHabits((prev) =>
       prev.includes(id) ? prev.filter((h) => h !== id) : [...prev, id],
     );
 
-  const completedDays = WEEK.filter((d) => d.status === "complete").length;
-  const totalDays = WEEK.length;
+  // Build the "today" week dots. Until habit_logs exist, all pending.
+  const week: ReadonlyArray<WeekDay> = WEEK_LETTERS.map((letter) => ({
+    letter,
+    status: "pending" as const,
+  }));
+
+  // Until habit_logs exist, no completed habits today. Show 0 / N.
+  const totalToday = focusHabits.length || 0;
+  const completedToday = 0;
 
   return (
     <AppShell
-      header={<GreetingHeader name="Joris" hasUnread />}
+      header={
+        <GreetingHeader
+          name={displayName}
+          hasUnread={false}
+          onProfile={() => router.push("/profiel")}
+        />
+      }
       bottomNav={
         <BottomNav
           items={NAV_ITEMS}
           activeId={activeTab}
-          onSelect={setActiveTab}
+          onSelect={(id) => {
+            setActiveTab(id);
+            if (id === "profile") router.push("/profiel");
+          }}
         />
       }
     >
-      <div className="flex flex-col gap-5">
-        <StreakHeroCard
-          streakDays={9}
-          completedToday={completedDays}
-          totalToday={totalDays}
-          week={WEEK}
-        />
-
-        <StruggleCallout />
-
-        <section className="flex flex-col gap-3">
-          <SectionHeader
-            title="Mijn bad habits"
-            action={
-              <button
-                type="button"
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full px-2 py-1",
-                  "text-xs font-medium text-muted",
-                  "transition-colors duration-150 hover:text-foreground",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-bright/70",
-                )}
-              >
-                Bewerk
-                <PencilIcon />
-              </button>
-            }
+      {!loaded ? (
+        <div className="flex flex-col gap-4 pt-2">
+          <LoadingSkeleton height="h-44" />
+          <LoadingSkeleton height="h-16" />
+          <LoadingSkeleton height="h-64" />
+        </div>
+      ) : (
+        <div className="flex flex-col gap-5">
+          <StreakHeroCard
+            streakDays={0}
+            completedToday={completedToday}
+            totalToday={totalToday}
+            week={week}
           />
-          <GlassCard padding="none">
-            <ul className="flex flex-col divide-y divide-[var(--color-border)] px-4">
-              {HABITS.map((habit) => (
-                <li key={habit.id}>
-                  <StreakHabitRow
-                    name={habit.name}
-                    sinceLabel={habit.since}
-                    icon={habit.icon}
-                    days={habit.days}
-                    checkedToday={checkedHabits.includes(habit.id)}
-                    onCheck={() => toggleHabit(habit.id)}
-                  />
-                </li>
-              ))}
-            </ul>
-          </GlassCard>
-        </section>
 
-        <ImpactStats />
-      </div>
+          <StruggleCallout />
+
+          <section className="flex flex-col gap-3">
+            <SectionHeader
+              title="Mijn bad habits"
+              action={
+                <button
+                  type="button"
+                  onClick={() => router.push("/profiel")}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full px-2 py-1",
+                    "text-xs font-medium text-muted",
+                    "transition-colors duration-150 hover:text-foreground",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-bright/70",
+                  )}
+                >
+                  Bewerk
+                  <PencilIcon />
+                </button>
+              }
+            />
+            {focusHabits.length === 0 ? (
+              <GlassCard tone="elevated" padding="md">
+                <p className="text-sm text-muted">
+                  Nog geen gewoonten geselecteerd. Open je profiel om de
+                  onboarding opnieuw te doen.
+                </p>
+              </GlassCard>
+            ) : (
+              <GlassCard padding="none">
+                <ul className="flex flex-col divide-y divide-[var(--color-border)] px-4">
+                  {focusHabits.map((id) => {
+                    const meta = habitMeta(id);
+                    return (
+                      <li key={id}>
+                        <StreakHabitRow
+                          name={meta.display}
+                          sinceLabel="Begin vandaag"
+                          icon={meta.icon}
+                          days={0}
+                          checkedToday={checkedHabits.includes(id)}
+                          onCheck={() => toggleHabit(id)}
+                        />
+                      </li>
+                    );
+                  })}
+                </ul>
+              </GlassCard>
+            )}
+          </section>
+
+          <ImpactStats />
+        </div>
+      )}
     </AppShell>
   );
 }
@@ -480,18 +538,29 @@ export default function DashboardPage() {
 /*  Internal sections                                                         */
 /* -------------------------------------------------------------------------- */
 
+function getTimeGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 6) return "Goedenacht";
+  if (hour < 12) return "Goedemorgen";
+  if (hour < 18) return "Goedemiddag";
+  return "Goedenavond";
+}
+
 function GreetingHeader({
   name,
   hasUnread,
+  onProfile,
 }: {
-  name: string;
+  name: string | null;
   hasUnread?: boolean;
+  onProfile?: () => void;
 }) {
+  const greeting = getTimeGreeting();
   return (
     <header className="flex items-start justify-between gap-3 pt-1">
       <div className="flex min-w-0 flex-col gap-1">
         <h1 className="text-2xl font-semibold leading-tight tracking-tight text-foreground">
-          Goedemorgen, {name}{" "}
+          {name ? `${greeting}, ${name}` : greeting}{" "}
           <span aria-hidden className="inline-block translate-y-[-1px]">
             👋
           </span>
@@ -523,6 +592,7 @@ function GreetingHeader({
           icon={<UserIcon />}
           variant="secondary"
           size="md"
+          onClick={onProfile}
         />
       </div>
     </header>
