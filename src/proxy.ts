@@ -2,7 +2,12 @@ import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 import { getRouteAfterLogin } from "@/lib/auth/getRouteAfterLogin";
 
-const PROTECTED_PREFIXES = ["/dashboard", "/profiel", "/onboarding"];
+const PROTECTED_PREFIXES = [
+  "/dashboard",
+  "/profiel",
+  "/onboarding",
+  "/geschiedenis",
+];
 const AUTH_PUBLIC_PATHS = ["/", "/login"];
 
 export async function proxy(request: NextRequest) {
@@ -48,8 +53,12 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Logged in but heading to /dashboard or /profiel without finishing onboarding
-  if (pathname.startsWith("/dashboard") || pathname.startsWith("/profiel")) {
+  // Logged in but heading to a post-onboarding route without finishing onboarding
+  if (
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/profiel") ||
+    pathname.startsWith("/geschiedenis")
+  ) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("onboarded_at")

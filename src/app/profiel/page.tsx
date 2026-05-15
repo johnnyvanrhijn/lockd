@@ -11,7 +11,6 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { GhostButton } from "@/components/ui/GhostButton";
 import { IconButton } from "@/components/ui/IconButton";
-import { TextField } from "@/components/ui/TextField";
 import { LoadingSkeleton } from "@/components/ui/LoadingSkeleton";
 import { SummarySection } from "@/components/onboarding/SummarySection";
 import { getSupabaseClient } from "@/lib/supabase/client";
@@ -24,6 +23,15 @@ import {
   TONE_OPTIONS,
   SUPPORT_OPTIONS,
 } from "@/lib/onboarding/options";
+import { HabitAssumptionsSheet } from "@/components/badHabits/HabitAssumptionsSheet";
+import { getBadHabitName } from "@/lib/badHabits/catalog";
+import {
+  type AnswerValue,
+  type AnswersByQuestion,
+  getQuestionsForHabit,
+  resolveSingleValue,
+} from "@/lib/badHabits/questions";
+import { describeAssumptions } from "@/lib/badHabits/impact";
 import { cn } from "@/lib/utils/cn";
 
 function HomeIcon() {
@@ -163,6 +171,15 @@ export default function ProfilePage() {
   const [savingName, setSavingName] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
 
+  /** Active bad-habit assumptions: habit_id → answers map. */
+  const [habitAnswers, setHabitAnswers] = useState<
+    Record<string, AnswersByQuestion>
+  >({});
+  const [activeHabits, setActiveHabits] = useState<string[]>([]);
+  /** When set, the assumption-edit sheet is open for this habit. */
+  const [editingHabit, setEditingHabit] = useState<string | null>(null);
+  const [savingHabit, setSavingHabit] = useState(false);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -172,23 +189,42 @@ export default function ProfilePage() {
         router.replace("/login");
         return;
       }
-      const [profileRes, responsesRes] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("display_name, email, onboarded_at, created_at")
-          .eq("id", userData.user.id)
-          .maybeSingle(),
-        supabase
-          .from("onboarding_responses")
-          .select(
-            "focus_habits, desired_outcomes, risk_times, risk_situations, triggers, tone_of_voice, support_modes, active_intervention, accountability_mode",
-          )
-          .eq("user_id", userData.user.id)
-          .maybeSingle(),
-      ]);
+      const [profileRes, responsesRes, habitsRes, answersRes] =
+        await Promise.all([
+          supabase
+            .from("profiles")
+            .select("display_name, email, onboarded_at, created_at")
+            .eq("id", userData.user.id)
+            .maybeSingle(),
+          supabase
+            .from("onboarding_responses")
+            .select(
+              "focus_habits, desired_outcomes, risk_times, risk_situations, triggers, tone_of_voice, support_modes, active_intervention, accountability_mode",
+            )
+            .eq("user_id", userData.user.id)
+            .maybeSingle(),
+          supabase
+            .from("user_bad_habits")
+            .select("habit_id, created_at")
+            .eq("user_id", userData.user.id)
+            .eq("active", true)
+            .order("created_at", { ascending: true }),
+          supabase
+            .from("user_habit_answers")
+            .select("habit_id, question_id, answer")
+            .eq("user_id", userData.user.id),
+        ]);
       if (cancelled) return;
       setProfile(profileRes.data);
       setResponses(responsesRes.data);
+      setActiveHabits((habitsRes.data ?? []).map((h) => h.habit_id));
+      const grouped: Record<string, AnswersByQuestion> = {};
+      for (const row of answersRes.data ?? []) {
+        const habit = row.habit_id;
+        if (!grouped[habit]) grouped[habit] = {};
+        grouped[habit][row.question_id] = row.answer as AnswerValue;
+      }
+      setHabitAnswers(grouped);
       setNameDraft(profileRes.data?.display_name ?? "");
       setLoaded(true);
     })();
@@ -225,6 +261,22 @@ export default function ProfilePage() {
 
   function restartOnboarding() {
     router.push("/onboarding?step=1");
+  }
+
+  async function saveHabitAnswers(habitId: string, answers: AnswersByQuestion) {
+    setSavingHabit(true);
+    const supabase = getSupabaseClient();
+    const { error } = await supabase.rpc("save_habit_answers", {
+      p_habit_id: habitId,
+      p_answers: answers as Record<string, AnswerValue>,
+    });
+    setSavingHabit(false);
+    if (error) {
+      console.error("[profile] save_habit_answers failed:", error);
+      return;
+    }
+    setHabitAnswers((prev) => ({ ...prev, [habitId]: answers }));
+    setEditingHabit(null);
   }
 
   return (
@@ -415,6 +467,27 @@ export default function ProfilePage() {
             </section>
           )}
 
+          {activeHabits.length > 0 && (
+            <section className="flex flex-col gap-3">
+              <h2 className="px-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-purple-bright">
+                Aannames per gewoonte
+              </h2>
+              <GlassCard padding="none">
+                <ul className="flex flex-col divide-y divide-[var(--color-border)] px-4">
+                  {activeHabits.map((habitId) => (
+                    <li key={habitId}>
+                      <HabitAssumptionsRow
+                        habitId={habitId}
+                        answers={habitAnswers[habitId] ?? {}}
+                        onEdit={() => setEditingHabit(habitId)}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </GlassCard>
+            </section>
+          )}
+
           <section className="flex flex-col gap-3 pt-2">
             <PrimaryButton fullWidth onClick={restartOnboarding}>
               Onboarding opnieuw doen
@@ -425,6 +498,86 @@ export default function ProfilePage() {
           </section>
         </div>
       )}
+
+      {editingHabit && (
+        <HabitAssumptionsSheet
+          key={editingHabit}
+          habitId={editingHabit}
+          initialAnswers={habitAnswers[editingHabit] ?? {}}
+          saving={savingHabit}
+          onClose={() => setEditingHabit(null)}
+          onSave={(answers) => saveHabitAnswers(editingHabit, answers)}
+        />
+      )}
     </AppShell>
+  );
+}
+
+function HabitAssumptionsRow({
+  habitId,
+  answers,
+  onEdit,
+}: {
+  habitId: string;
+  answers: AnswersByQuestion;
+  onEdit: () => void;
+}) {
+  const name = getBadHabitName(habitId);
+  const questions = getQuestionsForHabit(habitId);
+  const lines = describeAssumptions(habitId, answers);
+  // If there are no derived assumptions (trigger-only habits), surface the
+  // selected option labels instead so the row never appears empty.
+  const fallback = questions
+    .map((q) => {
+      const a = answers[q.id] ?? q.defaultAnswer;
+      if (q.type === "single") {
+        const opt = q.options.find((o) => o.key === a);
+        // resolveSingleValue is used elsewhere; here we only need the label.
+        void resolveSingleValue;
+        return opt ? `${q.question.split("?")[0]}: ${opt.label}` : null;
+      }
+      if (q.type === "multi") {
+        const arr = Array.isArray(a) ? (a as string[]) : [];
+        const labels = arr
+          .map((k) => q.options.find((o) => o.key === k)?.label)
+          .filter(Boolean);
+        return labels.length > 0 ? labels.join(" · ") : null;
+      }
+      if (q.type === "slider") {
+        const v = typeof a === "number" ? a : q.defaultAnswer;
+        return `${v}${q.slider.suffix ?? ""}`;
+      }
+      return null;
+    })
+    .filter((x): x is string => Boolean(x));
+  const display = lines.length > 0 ? lines : fallback;
+  return (
+    <button
+      type="button"
+      onClick={onEdit}
+      className={cn(
+        "flex w-full items-start justify-between gap-3 py-3 text-left",
+        "transition-colors hover:bg-white/[0.01]",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-bright/50 rounded-[var(--radius-sm)]",
+      )}
+    >
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <span className="text-sm font-semibold text-foreground">{name}</span>
+        <span className="line-clamp-2 text-[11px] leading-relaxed text-muted">
+          {display.length > 0 ? display.join(" · ") : "Tap om aan te passen"}
+        </span>
+      </div>
+      <span className="shrink-0 text-purple-bright">
+        <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" aria-hidden>
+          <path
+            d="M5 4l4 4-4 4"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </span>
+    </button>
   );
 }

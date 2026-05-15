@@ -1,26 +1,42 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { IconButton } from "@/components/ui/IconButton";
-import { CircularProgress } from "@/components/ui/CircularProgress";
-import { WeekStreakDots, type WeekDay } from "@/components/ui/WeekStreakDots";
-import { StreakHabitRow } from "@/components/ui/StreakHabitRow";
 import { LoadingSkeleton } from "@/components/ui/LoadingSkeleton";
 import {
   BottomNav,
   type BottomNavItem,
 } from "@/components/navigation/BottomNav";
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { HABIT_OPTIONS } from "@/lib/onboarding/options";
+import { getBadHabitName } from "@/lib/badHabits/catalog";
+import { getActiveLogDate, subDays } from "@/lib/badHabits/clientDate";
+import { IdentityHeroCard } from "@/components/badHabits/IdentityHeroCard";
+import {
+  HabitCommitmentCard,
+  type CommitmentStatus,
+} from "@/components/badHabits/HabitCommitmentCard";
+import { ImpactInsightGrid } from "@/components/badHabits/ImpactInsightGrid";
+import { RiskCard } from "@/components/badHabits/RiskCard";
+import {
+  aggregateImpact,
+  type AggregatedImpact,
+  type ImpactInput,
+} from "@/lib/badHabits/impact";
+import {
+  assessRisk,
+  describeWindow,
+  type RecentFail,
+  type RiskAssessment,
+} from "@/lib/badHabits/risk";
+import type { AnswerValue, AnswersByQuestion } from "@/lib/badHabits/questions";
+import { getQuestionsForHabit } from "@/lib/badHabits/questions";
 import { cn } from "@/lib/utils/cn";
 
 /* -------------------------------------------------------------------------- */
 /*  Icons                                                                     */
-/*  Inline SVGs match the design-system convention: components don't depend   */
-/*  on an icon library, page files bring their own.                           */
 /* -------------------------------------------------------------------------- */
 
 function BellIcon() {
@@ -51,19 +67,6 @@ function UserIcon() {
         stroke="currentColor"
         strokeWidth="1.6"
         strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function FlameIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      <path
-        d="M12 3.5c.4 2.4 1.8 3.5 3 5 1.4 1.7 2.5 3.5 2.5 5.5a5.5 5.5 0 0 1-11 0c0-1.6.7-3 1.5-4 .4.9 1 1.4 1.8 1.6-.5-1.6-.2-3.4 1-5.2.4-.7.8-1.6 1.2-2.9Z"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinejoin="round"
       />
     </svg>
   );
@@ -127,155 +130,6 @@ function ArrowRight() {
   );
 }
 
-function ClockIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-      <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.6" />
-      <path
-        d="M12 7.5V12l3 2.5"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function EuroIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M17 7a6 6 0 1 0 0 10M5 11h9M5 14h8"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-/* Habit category icons — small monoline glyphs, neutral by default so the
-   one-voice rule keeps Iris reserved for attention. */
-
-function CigaretteIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-      <rect
-        x="3"
-        y="13"
-        width="14"
-        height="3"
-        rx="0.5"
-        stroke="currentColor"
-        strokeWidth="1.6"
-      />
-      <path
-        d="M17 13v3M19 13v3M21 13v3"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-      <path
-        d="M9 9c1.5-1 1.5-2.5 0-3.5M12 10c1.5-1 1.5-2.5 0-3.5"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function BurgerIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M4 9c1-3 4-5 8-5s7 2 8 5H4Z"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M3 12.5h18M3 15.5c1 0 1.5-1 2.5-1s1.5 1 2.5 1 1.5-1 2.5-1 1.5 1 2.5 1 1.5-1 2.5-1 1.5 1 2.5 1"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-      <path
-        d="M5 19h14"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function AdultIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-      <rect
-        x="3"
-        y="5"
-        width="18"
-        height="14"
-        rx="2.5"
-        stroke="currentColor"
-        strokeWidth="1.6"
-      />
-      <path
-        d="M8 9v6M11 9v6M8 12h3M13 9h2.5a1.5 1.5 0 0 1 0 3H13v3M13 12h2.5a1.5 1.5 0 0 1 0 3H13"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function PhoneIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-      <rect
-        x="6"
-        y="2.5"
-        width="12"
-        height="19"
-        rx="2.5"
-        stroke="currentColor"
-        strokeWidth="1.6"
-      />
-      <path
-        d="M11 18.5h2"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function CupIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M6.5 7h11l-1 13a2 2 0 0 1-2 1.8H9.5A2 2 0 0 1 7.5 20L6.5 7Z"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M9 3c.5 1 .5 2 0 3M12 3c.5 1 .5 2 0 3M15 3c.5 1 .5 2 0 3"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-/* Nav icons */
-
 function HomeNavIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -334,46 +188,6 @@ function ProfileNavIcon() {
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/*  Habit metadata                                                            */
-/*                                                                            */
-/*  The dashboard displays the user's selected focus_habits from onboarding   */
-/*  as a habit list. Each option from HABIT_OPTIONS gets a "do not …" label   */
-/*  and an icon. New options added to HABIT_OPTIONS without an entry here     */
-/*  fall back to FlameIcon and the raw label.                                 */
-/* -------------------------------------------------------------------------- */
-
-type HabitMeta = {
-  /** Imperative display name on the dashboard (e.g. "Niet gerookt"). */
-  display: string;
-  icon: ReactNode;
-};
-
-const HABIT_META: Record<string, HabitMeta> = {
-  smoking:      { display: "Niet gerookt",        icon: <CigaretteIcon /> },
-  porn:         { display: "Geen porno",          icon: <AdultIcon /> },
-  weed:         { display: "Geen wiet",           icon: <FlameIcon /> },
-  gambling:     { display: "Niet gegokt",         icon: <FlameIcon /> },
-  alcohol:      { display: "Geen alcohol",        icon: <CupIcon /> },
-  doomscroll:   { display: "Niet doomscrollen",   icon: <PhoneIcon /> },
-  binge_eating: { display: "Geen vreetbuien",     icon: <BurgerIcon /> },
-  overspending: { display: "Niet impulsief uitgegeven", icon: <FlameIcon /> },
-  snoozing:     { display: "Niet gesnoozed",      icon: <FlameIcon /> },
-  nail_biting:  { display: "Niet aan nagels",     icon: <FlameIcon /> },
-  caffeine:     { display: "Minder cafeïne",      icon: <FlameIcon /> },
-  social_media: { display: "Minder social media", icon: <PhoneIcon /> },
-};
-
-function habitMeta(id: string): HabitMeta {
-  const found = HABIT_META[id];
-  if (found) return found;
-  const fallbackLabel =
-    HABIT_OPTIONS.find((o) => o.id === id)?.label ?? id;
-  return { display: fallbackLabel, icon: <FlameIcon /> };
-}
-
-const WEEK_LETTERS = ["M", "D", "W", "D", "V", "Z", "Z"] as const;
-
 const NAV_ITEMS: ReadonlyArray<BottomNavItem> = [
   { id: "overview", label: "Overzicht", icon: <HomeNavIcon /> },
   { id: "stats", label: "Statistieken", icon: <ChartNavIcon /> },
@@ -385,67 +199,342 @@ const NAV_ITEMS: ReadonlyArray<BottomNavItem> = [
 /*  Page                                                                      */
 /* -------------------------------------------------------------------------- */
 
+type ActiveHabit = {
+  habit_id: string;
+  name: string;
+  status: CommitmentStatus;
+  streak: number;
+};
+
+type DashboardData = {
+  displayName: string | null;
+  habits: ActiveHabit[];
+  lockdStreak: number;
+  bestStreak: number;
+  consistency: {
+    active: number;
+    success: number;
+    pct: number | null;
+  };
+  impact: AggregatedImpact;
+  risk: RiskAssessment;
+  riskWindowSentence: string | null;
+};
+
 export default function DashboardPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("overview");
-  const [checkedHabits, setCheckedHabits] = useState<ReadonlyArray<string>>([]);
-
-  // Real data fetched from Supabase on mount.
   const [loaded, setLoaded] = useState(false);
-  const [displayName, setDisplayName] = useState<string | null>(null);
-  const [focusHabits, setFocusHabits] = useState<string[]>([]);
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [savingHabit, setSavingHabit] = useState<string | null>(null);
+
+  const logDate = useMemo(() => getActiveLogDate(), []);
+  // Bumping this counter triggers a fresh fetch. Effects subscribe to
+  // `refreshTick`; event handlers call `triggerRefresh()` to mutate it.
+  const [refreshTick, setRefreshTick] = useState(0);
+  const triggerRefresh = useCallback(
+    () => setRefreshTick((n) => n + 1),
+    [],
+  );
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+
+    async function load(): Promise<DashboardData | "no-user" | null> {
       const supabase = getSupabaseClient();
       const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) {
-        router.replace("/login");
-        return;
-      }
-      const [profileRes, responsesRes] = await Promise.all([
+      if (!userData.user) return "no-user";
+      const userId = userData.user.id;
+
+      const since30 = subDays(logDate, 30);
+      const since7 = subDays(logDate, 6);
+      const [
+        profileRes,
+        habitsRes,
+        todayLogsRes,
+        consistencyRes,
+        lockdRes,
+        answersRes,
+        failsRes,
+        weekHistoryRes,
+      ] = await Promise.all([
         supabase
           .from("profiles")
           .select("display_name")
-          .eq("id", userData.user.id)
+          .eq("id", userId)
           .maybeSingle(),
         supabase
-          .from("onboarding_responses")
-          .select("focus_habits")
-          .eq("user_id", userData.user.id)
-          .maybeSingle(),
+          .from("user_bad_habits")
+          .select(
+            "habit_id, created_at, bad_habits_master!inner(name, sort_order)",
+          )
+          .eq("user_id", userId)
+          .eq("active", true)
+          .order("created_at", { ascending: true }),
+        supabase
+          .from("habit_logs")
+          .select("habit_id, status")
+          .eq("user_id", userId)
+          .eq("log_date", logDate),
+        supabase.rpc("get_today_consistency", { p_today: logDate }),
+        supabase.rpc("get_lockd_streak", { p_today: logDate }),
+        supabase
+          .from("user_habit_answers")
+          .select("habit_id, question_id, answer")
+          .eq("user_id", userId),
+        supabase
+          .from("habit_logs")
+          .select("habit_id, log_date, status, created_at")
+          .eq("user_id", userId)
+          .eq("status", "fail")
+          .gte("log_date", since30),
+        supabase.rpc("get_consistency_history", {
+          p_from: since7,
+          p_to: logDate,
+        }),
       ]);
+
+      const profile = profileRes.data;
+      const habits = habitsRes.data ?? [];
+      const todayLogs = todayLogsRes.data ?? [];
+      const consistencyRow = consistencyRes.data?.[0] ?? null;
+      const lockdRow = lockdRes.data?.[0] ?? null;
+
+      const statusByHabit: Record<string, CommitmentStatus> = {};
+      for (const log of todayLogs) {
+        statusByHabit[log.habit_id] =
+          log.status === "success" || log.status === "fail"
+            ? (log.status as CommitmentStatus)
+            : "pending";
+      }
+
+      const streakPromises = habits.map((h) =>
+        supabase.rpc("get_individual_streak", {
+          p_habit_id: h.habit_id,
+          p_today: logDate,
+        }),
+      );
+      const streakResults = await Promise.all(streakPromises);
+      const streakByHabit: Record<string, number> = {};
+      habits.forEach((h, i) => {
+        const row = streakResults[i].data?.[0];
+        streakByHabit[h.habit_id] = row?.current_streak ?? 0;
+      });
+
+      type HabitJoin = {
+        habit_id: string;
+        bad_habits_master?: { name: string; sort_order: number } | null;
+      };
+      const enriched: ActiveHabit[] = habits
+        .map((h) => {
+          const joined = h as HabitJoin;
+          return {
+            habit_id: h.habit_id,
+            name:
+              joined.bad_habits_master?.name ?? getBadHabitName(h.habit_id),
+            status: statusByHabit[h.habit_id] ?? "pending",
+            streak: streakByHabit[h.habit_id] ?? 0,
+            sortOrder: joined.bad_habits_master?.sort_order ?? 999,
+          };
+        })
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map(({ sortOrder: _drop, ...rest }) => {
+          void _drop;
+          return rest;
+        });
+
+      // --- Impact: answers grouped by habit, days-since-added, fail counts.
+      const answersByHabit: Record<string, AnswersByQuestion> = {};
+      for (const row of answersRes.data ?? []) {
+        const habit = row.habit_id;
+        if (!answersByHabit[habit]) answersByHabit[habit] = {};
+        answersByHabit[habit][row.question_id] = row.answer as AnswerValue;
+      }
+
+      const allFails = failsRes.data ?? [];
+      const failsByHabit: Record<string, number> = {};
+      for (const f of allFails) {
+        // Count only fails from after the habit was added — bounded below.
+        failsByHabit[f.habit_id] = (failsByHabit[f.habit_id] ?? 0) + 1;
+      }
+
+      const nowDate = new Date();
+      const impactInputs: ImpactInput[] = habits.map((h) => {
+        const habitAdded = new Date(h.created_at);
+        const daysSinceAdded = Math.max(
+          0,
+          Math.floor(
+            (nowDate.getTime() - habitAdded.getTime()) / 86400000,
+          ) + 1,
+        );
+        const fails = failsByHabit[h.habit_id] ?? 0;
+        return {
+          habitId: h.habit_id,
+          answers: answersByHabit[h.habit_id] ?? {},
+          cleanDays: Math.max(0, daysSinceAdded - fails),
+        };
+      });
+      const impact = aggregateImpact(impactInputs);
+
+      // --- Risk: triggers from answers + recent fails + week consistency.
+      const triggersByHabit: Record<string, string[]> = {};
+      for (const h of habits) {
+        const habitAnswers = answersByHabit[h.habit_id] ?? {};
+        const triggerQ = getQuestionsForHabit(h.habit_id).find(
+          (q) => q.metricKey === "triggers",
+        );
+        if (triggerQ) {
+          const ans = habitAnswers[triggerQ.id] ?? triggerQ.defaultAnswer;
+          if (Array.isArray(ans)) triggersByHabit[h.habit_id] = ans as string[];
+        }
+      }
+
+      const recentFails: RecentFail[] = allFails.map((f) => {
+        // Use the *log creation* hour as a proxy for "when the relapse was
+        // recorded". It's not perfect (a 02:00 log under the 03:00 cutoff
+        // represents yesterday) but acceptable for pattern detection.
+        const created = f.created_at
+          ? new Date(f.created_at as string)
+          : null;
+        return {
+          habitId: f.habit_id,
+          date: f.log_date,
+          hour: created ? created.getHours() : null,
+        };
+      });
+
+      const weekRows = weekHistoryRes.data ?? [];
+      const usableWeek = weekRows.filter((r) => r.pct !== null);
+      const recentConsistencyPct =
+        usableWeek.length === 0
+          ? 0
+          : Math.round(
+              usableWeek.reduce((s, r) => s + (r.pct ?? 0), 0) /
+                usableWeek.length,
+            );
+
+      const daysOfData =
+        habits.length === 0
+          ? 0
+          : Math.max(
+              ...habits.map((h) => {
+                const added = new Date(h.created_at);
+                return Math.floor(
+                  (nowDate.getTime() - added.getTime()) / 86400000,
+                );
+              }),
+            );
+
+      const risk = assessRisk({
+        triggersByHabit,
+        recentFails,
+        daysOfData,
+        recentConsistencyPct,
+        hasActiveHabits: habits.length > 0,
+        now: nowDate,
+      });
+
+      return {
+        displayName: profile?.display_name ?? null,
+        habits: enriched,
+        lockdStreak: lockdRow?.current_streak ?? 0,
+        bestStreak: lockdRow?.best_streak ?? 0,
+        consistency: {
+          active: consistencyRow?.active ?? 0,
+          success: consistencyRow?.success ?? 0,
+          pct: consistencyRow?.pct ?? null,
+        },
+        impact,
+        risk,
+        riskWindowSentence: describeWindow(risk),
+      };
+    }
+
+    load().then((result) => {
       if (cancelled) return;
-      setDisplayName(profileRes.data?.display_name ?? null);
-      setFocusHabits(responsesRes.data?.focus_habits ?? []);
-      setLoaded(true);
-    })();
+      if (result === "no-user") {
+        router.replace("/login");
+        return;
+      }
+      if (result) {
+        setData(result);
+        setLoaded(true);
+      }
+    });
+
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [logDate, refreshTick, router]);
 
-  const toggleHabit = (id: string) =>
-    setCheckedHabits((prev) =>
-      prev.includes(id) ? prev.filter((h) => h !== id) : [...prev, id],
-    );
+  const handleAction = useCallback(
+    async (habitId: string, nextStatus: "success" | "fail") => {
+      if (!data) return;
+      const current = data.habits.find((h) => h.habit_id === habitId);
+      if (!current) return;
 
-  // Build the "today" week dots. Until habit_logs exist, all pending.
-  const week: ReadonlyArray<WeekDay> = WEEK_LETTERS.map((letter) => ({
-    letter,
-    status: "pending" as const,
-  }));
+      setSavingHabit(habitId);
 
-  // Until habit_logs exist, no completed habits today. Show 0 / N.
-  const totalToday = focusHabits.length || 0;
-  const completedToday = 0;
+      // Optimistic: figure out the new status. Tapping the active button = clear.
+      const optimisticStatus: CommitmentStatus =
+        current.status === nextStatus ? "pending" : nextStatus;
+
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              habits: prev.habits.map((h) =>
+                h.habit_id === habitId ? { ...h, status: optimisticStatus } : h,
+              ),
+            }
+          : prev,
+      );
+
+      const supabase = getSupabaseClient();
+      try {
+        if (optimisticStatus === "pending") {
+          const { error } = await supabase.rpc("clear_habit_log", {
+            p_habit_id: habitId,
+            p_log_date: logDate,
+          });
+          if (error) throw error;
+        } else {
+          const { error } = await supabase.rpc("log_habit", {
+            p_habit_id: habitId,
+            p_log_date: logDate,
+            p_status: optimisticStatus,
+          });
+          if (error) throw error;
+        }
+        // Refresh derived metrics (streak + consistency) after a successful write.
+        triggerRefresh();
+      } catch (err) {
+        console.error("[dashboard] log_habit failed:", err);
+        // Revert optimistic update on failure.
+        setData((prev) =>
+          prev
+            ? {
+                ...prev,
+                habits: prev.habits.map((h) =>
+                  h.habit_id === habitId
+                    ? { ...h, status: current.status }
+                    : h,
+                ),
+              }
+            : prev,
+        );
+      } finally {
+        setSavingHabit(null);
+      }
+    },
+    [data, logDate, triggerRefresh],
+  );
 
   return (
     <AppShell
       header={
         <GreetingHeader
-          name={displayName}
+          name={data?.displayName ?? null}
           hasUnread={false}
           onProfile={() => router.push("/profiel")}
         />
@@ -457,11 +546,12 @@ export default function DashboardPage() {
           onSelect={(id) => {
             setActiveTab(id);
             if (id === "profile") router.push("/profiel");
+            if (id === "stats") router.push("/geschiedenis");
           }}
         />
       }
     >
-      {!loaded ? (
+      {!loaded || !data ? (
         <div className="flex flex-col gap-4 pt-2">
           <LoadingSkeleton height="h-44" />
           <LoadingSkeleton height="h-16" />
@@ -469,18 +559,27 @@ export default function DashboardPage() {
         </div>
       ) : (
         <div className="flex flex-col gap-5">
-          <StreakHeroCard
-            streakDays={0}
-            completedToday={completedToday}
-            totalToday={totalToday}
-            week={week}
+          <IdentityHeroCard
+            lockdStreak={data.lockdStreak}
+            bestStreak={data.bestStreak}
+            activeCount={data.consistency.active}
+            successCount={data.consistency.success}
+            pct={data.consistency.pct}
+            onOpenHistory={() => router.push("/geschiedenis")}
           />
+
+          {data.habits.length > 0 && (
+            <RiskCard
+              risk={data.risk}
+              windowSentence={data.riskWindowSentence}
+            />
+          )}
 
           <StruggleCallout />
 
           <section className="flex flex-col gap-3">
             <SectionHeader
-              title="Mijn bad habits"
+              title="Vandaag jouw standaarden"
               action={
                 <button
                   type="button"
@@ -497,37 +596,62 @@ export default function DashboardPage() {
                 </button>
               }
             />
-            {focusHabits.length === 0 ? (
+            {data.habits.length === 0 ? (
               <GlassCard tone="elevated" padding="md">
                 <p className="text-sm text-muted">
-                  Nog geen gewoonten geselecteerd. Open je profiel om de
-                  onboarding opnieuw te doen.
+                  Nog geen eigenschappen geselecteerd. Open je profiel om
+                  gewoontes te kiezen.
                 </p>
               </GlassCard>
             ) : (
-              <GlassCard padding="none">
-                <ul className="flex flex-col divide-y divide-[var(--color-border)] px-4">
-                  {focusHabits.map((id) => {
-                    const meta = habitMeta(id);
-                    return (
-                      <li key={id}>
-                        <StreakHabitRow
-                          name={meta.display}
-                          sinceLabel="Begin vandaag"
-                          icon={meta.icon}
-                          days={0}
-                          checkedToday={checkedHabits.includes(id)}
-                          onCheck={() => toggleHabit(id)}
-                        />
-                      </li>
-                    );
-                  })}
-                </ul>
-              </GlassCard>
+              <div className="flex flex-col gap-2">
+                {data.habits.map((h) => (
+                  <HabitCommitmentCard
+                    key={h.habit_id}
+                    name={h.name}
+                    streakDays={h.streak}
+                    status={h.status}
+                    disabled={savingHabit === h.habit_id}
+                    onSuccess={() => handleAction(h.habit_id, "success")}
+                    onFail={() => handleAction(h.habit_id, "fail")}
+                  />
+                ))}
+              </div>
             )}
           </section>
 
-          <ImpactStats />
+          {data.habits.length > 0 && (
+            <ImpactInsightGrid
+              impact={data.impact}
+              onOpenHistory={() => router.push("/geschiedenis")}
+            />
+          )}
+
+          {data.habits.length > 0 && (
+            <button
+              type="button"
+              onClick={() => router.push("/geschiedenis")}
+              className={cn(
+                "group flex items-center justify-between rounded-[var(--radius-md)]",
+                "border border-[var(--color-border)] bg-surface/60 px-4 py-3.5",
+                "text-left transition-colors duration-200",
+                "hover:border-[var(--color-border-strong)]",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-bright/60",
+              )}
+            >
+              <span className="flex flex-col">
+                <span className="text-sm font-semibold text-foreground">
+                  Geschiedenis
+                </span>
+                <span className="text-[11px] text-muted">
+                  Bekijk elke dag dat je stand hield.
+                </span>
+              </span>
+              <span className="text-purple-bright">
+                <ArrowRight />
+              </span>
+            </button>
+          )}
         </div>
       )}
     </AppShell>
@@ -560,12 +684,9 @@ function GreetingHeader({
     <header className="flex items-start justify-between gap-3 pt-1">
       <div className="flex min-w-0 flex-col gap-1">
         <h1 className="text-2xl font-semibold leading-tight tracking-tight text-foreground">
-          {name ? `${greeting}, ${name}` : greeting}{" "}
-          <span aria-hidden className="inline-block translate-y-[-1px]">
-            👋
-          </span>
+          {name ? `${greeting}, ${name}` : greeting}
         </h1>
-        <p className="text-sm text-muted">Vandaag is weer een nieuwe kans.</p>
+        <p className="text-sm text-muted">Hou je standaarden vandaag.</p>
       </div>
 
       <div className="flex items-center gap-2">
@@ -596,65 +717,6 @@ function GreetingHeader({
         />
       </div>
     </header>
-  );
-}
-
-function StreakHeroCard({
-  streakDays,
-  completedToday,
-  totalToday,
-  week,
-}: {
-  streakDays: number;
-  completedToday: number;
-  totalToday: number;
-  week: ReadonlyArray<WeekDay>;
-}) {
-  return (
-    <GlassCard tone="purple" glow="soft" padding="lg">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex flex-col gap-1">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.25em] text-purple-bright">
-            Huidige streak
-          </span>
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-5xl font-semibold leading-none tracking-tight text-foreground">
-              {streakDays}
-            </span>
-          </div>
-          <span className="text-sm font-medium text-foreground">
-            dagen clean
-          </span>
-          <span className="text-xs text-muted">Je langste tot nu toe.</span>
-        </div>
-
-        <CircularProgress
-          value={completedToday}
-          max={totalToday}
-          size={132}
-          strokeWidth={9}
-          label={`${completedToday} van ${totalToday} habits vandaag`}
-        >
-          <FlameIcon className="h-9 w-9 text-purple-bright" />
-        </CircularProgress>
-
-        <div className="flex flex-col items-end gap-1 text-right">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.25em] text-purple-bright">
-            Vandaag
-          </span>
-          <span className="text-5xl font-semibold leading-none tracking-tight text-foreground">
-            {completedToday}
-            <span className="text-2xl text-muted">/{totalToday}</span>
-          </span>
-          <span className="text-sm font-medium text-foreground">op schema</span>
-          <span className="text-xs text-muted">Blijf zo doorgaan.</span>
-        </div>
-      </div>
-
-      <div className="mt-5 border-t border-[var(--color-border)] pt-4">
-        <WeekStreakDots days={week} />
-      </div>
-    </GlassCard>
   );
 }
 
@@ -716,78 +778,6 @@ function SectionHeader({
         {title}
       </h2>
       {action}
-    </div>
-  );
-}
-
-function ImpactStats() {
-  return (
-    <GlassCard padding="lg">
-      <div className="flex flex-col items-center gap-5">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.25em] text-purple-bright">
-          Jouw impact
-        </h2>
-
-        <div className="grid w-full grid-cols-3 gap-3">
-          <ImpactStat
-            icon={<ClockIcon />}
-            value="14u 30m"
-            label="teruggewonnen"
-          />
-          <ImpactStat icon={<EuroIcon />} value="€187" label="bespaard" />
-          <ImpactStat
-            icon={<BrainIcon />}
-            value="64%"
-            label="mentale rust"
-            trend="up"
-          />
-        </div>
-      </div>
-    </GlassCard>
-  );
-}
-
-function ImpactStat({
-  icon,
-  value,
-  label,
-  trend,
-}: {
-  icon: ReactNode;
-  value: ReactNode;
-  label: ReactNode;
-  trend?: "up" | "down";
-}) {
-  return (
-    <div className="flex flex-col items-start gap-2">
-      <span
-        aria-hidden
-        className={cn(
-          "flex h-9 w-9 items-center justify-center rounded-[var(--radius-sm)]",
-          "bg-purple/15 text-purple-bright",
-          "[&_svg]:h-4 [&_svg]:w-4",
-        )}
-      >
-        {icon}
-      </span>
-      <div className="flex flex-col gap-0.5">
-        <div className="flex items-baseline gap-1">
-          <span className="text-lg font-semibold leading-none tracking-tight text-foreground">
-            {value}
-          </span>
-          {trend === "up" && (
-            <span aria-hidden className="text-xs text-success">
-              ↑
-            </span>
-          )}
-          {trend === "down" && (
-            <span aria-hidden className="text-xs text-danger">
-              ↓
-            </span>
-          )}
-        </div>
-        <span className="text-[11px] leading-tight text-muted">{label}</span>
-      </div>
     </div>
   );
 }

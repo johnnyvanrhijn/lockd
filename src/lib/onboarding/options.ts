@@ -6,27 +6,21 @@
  * array; the UI picks it up automatically.
  */
 
+import { BAD_HABITS, MAX_BAD_HABITS } from "@/lib/badHabits/catalog";
+
 export const TOTAL_STEPS_SOLO = 8;
 export const TOTAL_STEPS_BUDDIES = 10;
 
 export type Option = { id: string; label: string };
 
-// Step 2 — habits to break (max 5)
-export const HABIT_OPTIONS: ReadonlyArray<Option> = [
-  { id: "smoking", label: "Roken" },
-  { id: "porn", label: "Porno" },
-  { id: "weed", label: "Blowen" },
-  { id: "gambling", label: "Gokken" },
-  { id: "alcohol", label: "Alcohol" },
-  { id: "doomscroll", label: "Doomscrollen" },
-  { id: "binge_eating", label: "Vreetbuien" },
-  { id: "overspending", label: "Impulsief uitgeven" },
-  { id: "snoozing", label: "Snoozen" },
-  { id: "nail_biting", label: "Nagelbijten" },
-  { id: "caffeine", label: "Te veel cafeïne" },
-  { id: "social_media", label: "Te veel social media" },
-] as const;
-export const MAX_FOCUS_HABITS = 5;
+// Step 2 — bad habits the user is taking back control over (max 5).
+// Sourced from the shared bad-habits catalog so onboarding, dashboard, and
+// the history screen all render the same labels.
+export const HABIT_OPTIONS: ReadonlyArray<Option> = BAD_HABITS.map((h) => ({
+  id: h.id,
+  label: h.name,
+}));
+export const MAX_FOCUS_HABITS = MAX_BAD_HABITS;
 
 // Step 3 — desired outcomes
 export const OUTCOME_OPTIONS: ReadonlyArray<Option> = [

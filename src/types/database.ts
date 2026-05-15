@@ -19,6 +19,30 @@ export type Database = {
   };
   public: {
     Tables: {
+      bad_habits_master: {
+        Row: {
+          created_at: string;
+          id: string;
+          is_default: boolean;
+          name: string;
+          sort_order: number;
+        };
+        Insert: {
+          created_at?: string;
+          id: string;
+          is_default?: boolean;
+          name: string;
+          sort_order: number;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          is_default?: boolean;
+          name?: string;
+          sort_order?: number;
+        };
+        Relationships: [];
+      };
       circle_invites: {
         Row: {
           accepted_at: string | null;
@@ -120,6 +144,97 @@ export type Database = {
         };
         Relationships: [];
       };
+      habit_logs: {
+        Row: {
+          created_at: string;
+          habit_id: string;
+          id: string;
+          log_date: string;
+          notes: string | null;
+          status: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          habit_id: string;
+          id?: string;
+          log_date: string;
+          notes?: string | null;
+          status: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          habit_id?: string;
+          id?: string;
+          log_date?: string;
+          notes?: string | null;
+          status?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "habit_logs_habit_id_fkey";
+            columns: ["habit_id"];
+            isOneToOne: false;
+            referencedRelation: "bad_habits_master";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      habit_questions_master: {
+        Row: {
+          config: Json | null;
+          created_at: string;
+          default_value: Json;
+          habit_id: string;
+          id: string;
+          metric_key: string | null;
+          options: Json | null;
+          question: string;
+          question_type: string;
+          sort_order: number;
+          unit: string | null;
+        };
+        Insert: {
+          config?: Json | null;
+          created_at?: string;
+          default_value: Json;
+          habit_id: string;
+          id: string;
+          metric_key?: string | null;
+          options?: Json | null;
+          question: string;
+          question_type: string;
+          sort_order: number;
+          unit?: string | null;
+        };
+        Update: {
+          config?: Json | null;
+          created_at?: string;
+          default_value?: Json;
+          habit_id?: string;
+          id?: string;
+          metric_key?: string | null;
+          options?: Json | null;
+          question?: string;
+          question_type?: string;
+          sort_order?: number;
+          unit?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "habit_questions_master_habit_id_fkey";
+            columns: ["habit_id"];
+            isOneToOne: false;
+            referencedRelation: "bad_habits_master";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       onboarding_responses: {
         Row: {
           accountability_mode: string;
@@ -198,14 +313,123 @@ export type Database = {
         };
         Relationships: [];
       };
+      user_bad_habits: {
+        Row: {
+          active: boolean;
+          created_at: string;
+          habit_id: string;
+          id: string;
+          user_id: string;
+        };
+        Insert: {
+          active?: boolean;
+          created_at?: string;
+          habit_id: string;
+          id?: string;
+          user_id: string;
+        };
+        Update: {
+          active?: boolean;
+          created_at?: string;
+          habit_id?: string;
+          id?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "user_bad_habits_habit_id_fkey";
+            columns: ["habit_id"];
+            isOneToOne: false;
+            referencedRelation: "bad_habits_master";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      user_habit_answers: {
+        Row: {
+          answer: Json;
+          created_at: string;
+          habit_id: string;
+          id: string;
+          question_id: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          answer: Json;
+          created_at?: string;
+          habit_id: string;
+          id?: string;
+          question_id: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          answer?: Json;
+          created_at?: string;
+          habit_id?: string;
+          id?: string;
+          question_id?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "user_habit_answers_habit_id_fkey";
+            columns: ["habit_id"];
+            isOneToOne: false;
+            referencedRelation: "bad_habits_master";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "user_habit_answers_question_id_fkey";
+            columns: ["question_id"];
+            isOneToOne: false;
+            referencedRelation: "habit_questions_master";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
     };
     Functions: {
       accept_invite: { Args: { p_code: string }; Returns: string };
+      clear_habit_log: {
+        Args: { p_habit_id: string; p_log_date: string };
+        Returns: undefined;
+      };
       complete_onboarding: { Args: Record<string, never>; Returns: string };
       ensure_my_invite_code: { Args: Record<string, never>; Returns: string };
+      get_consistency_history: {
+        Args: { p_from: string; p_to: string };
+        Returns: {
+          active: number;
+          d: string;
+          fail: number;
+          pct: number;
+          pending: number;
+          success: number;
+        }[];
+      };
+      get_day_detail: {
+        Args: { p_day: string };
+        Returns: {
+          habit_id: string;
+          name: string;
+          status: string;
+        }[];
+      };
+      get_individual_streak: {
+        Args: { p_habit_id: string; p_today: string };
+        Returns: {
+          best_streak: number;
+          current_streak: number;
+          fail_count: number;
+          success_count: number;
+        }[];
+      };
       get_invite_preview: {
         Args: { p_code: string };
         Returns: {
@@ -215,6 +439,35 @@ export type Database = {
           inviter_id: string;
           status: string;
         }[];
+      };
+      get_lockd_streak: {
+        Args: { p_today: string };
+        Returns: {
+          best_streak: number;
+          current_streak: number;
+        }[];
+      };
+      get_today_consistency: {
+        Args: { p_today: string };
+        Returns: {
+          active: number;
+          fail: number;
+          pct: number;
+          pending: number;
+          success: number;
+        }[];
+      };
+      log_habit: {
+        Args: { p_habit_id: string; p_log_date: string; p_status: string };
+        Returns: string;
+      };
+      save_habit_answers: {
+        Args: { p_answers: Json; p_habit_id: string };
+        Returns: undefined;
+      };
+      sync_user_bad_habits: {
+        Args: { p_habit_ids: string[] };
+        Returns: undefined;
       };
     };
     Enums: {

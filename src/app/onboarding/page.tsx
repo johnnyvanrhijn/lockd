@@ -10,15 +10,16 @@ import {
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase/client";
-import {
-  TOTAL_STEPS_BUDDIES,
-  TOTAL_STEPS_SOLO,
-} from "@/lib/onboarding/options";
 import { LoadingSkeleton } from "@/components/ui/LoadingSkeleton";
 import { MobilePage } from "@/components/layout/MobilePage";
+import type {
+  AnswerValue,
+  AnswersByQuestion,
+} from "@/lib/badHabits/questions";
 
 import { StepSplash } from "./_components/StepSplash";
 import { StepFocus } from "./_components/StepFocus";
+import { StepHabitQuestions } from "./_components/StepHabitQuestions";
 import { StepWaarom } from "./_components/StepWaarom";
 import { StepPatroon } from "./_components/StepPatroon";
 import { StepTriggers } from "./_components/StepTriggers";
@@ -51,14 +52,19 @@ export type OnboardingState = {
   active_intervention: boolean;
   accountability_mode: AccountabilityMode;
   privacy: CirclePrivacy;
+  /** All loaded user_habit_answers, keyed by habit_id. */
+  habit_answers: Record<string, AnswersByQuestion>;
 };
 
-/**
- * Pulls a user-friendly message out of anything thrown. Supabase
- * (PostgrestError) responses are plain objects with a `message` field,
- * not Error instances; native fetch errors are TypeError; the SDK
- * occasionally throws Error too. We try them all.
- */
+// The "legacy" step numbers map 1:1 to the screens that existed before the
+// bad-habits feature: 1=splash, 2=focus, 3=waarom, ..., 8=summary/invite,
+// 9=signals (buddies), 10=summary (buddies). After Focus we inject N habit-
+// question steps where N = focus_habits.length; the legacy steps 3..N+ shift
+// down by N actual URL positions. `legacyStep <-> actualStep` translates.
+const LEGACY_TOTAL_SOLO = 8;
+const LEGACY_TOTAL_BUDDIES = 10;
+const FIRST_HABIT_STEP = 3; // actual step number of first habit-question screen
+
 function extractErrorMessage(err: unknown): string {
   if (!err) return "Onbekende fout. Probeer opnieuw.";
   if (err instanceof Error && err.message) return err.message;
@@ -94,22 +100,66 @@ const DEFAULT_STATE: OnboardingState = {
   active_intervention: true,
   accountability_mode: "solo",
   privacy: DEFAULT_PRIVACY,
+  habit_answers: {},
 };
 
 function OnboardingFlow() {
   const router = useRouter();
   const params = useSearchParams();
-  const rawStep = Number(params.get("step") ?? "1");
-  const requestedStep = Number.isFinite(rawStep)
-    ? Math.max(1, Math.min(rawStep, 10))
-    : 1;
 
   const [state, setState] = useState<OnboardingState>(DEFAULT_STATE);
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  // Wrap a save+advance pair: surface errors instead of advancing silently.
+  const habitCount = state.focus_habits.length;
+  const isBuddies = state.accountability_mode === "buddies";
+  const legacyTotal = isBuddies ? LEGACY_TOTAL_BUDDIES : LEGACY_TOTAL_SOLO;
+  const totalSteps = legacyTotal + habitCount;
+
+  // URL step is clamped to total. Sequence:
+  //   1: Splash
+  //   2: Focus
+  //   3..2+habitCount: habit-question screens
+  //   3+habitCount..legacyTotal+habitCount: legacy steps shifted
+  const rawStep = Number(params.get("step") ?? "1");
+  const requestedStep = Number.isFinite(rawStep)
+    ? Math.max(1, Math.min(rawStep, totalSteps))
+    : 1;
+  const step = Math.min(requestedStep, totalSteps);
+
+  /** Convert an actual URL step number to its legacy equivalent (1..legacyTotal). */
+  function actualToLegacy(actual: number): {
+    legacy: number | null;
+    habitIndex: number | null;
+  } {
+    if (actual <= 2) return { legacy: actual, habitIndex: null };
+    const habitEnd = 2 + habitCount;
+    if (actual <= habitEnd)
+      return { legacy: null, habitIndex: actual - FIRST_HABIT_STEP };
+    return { legacy: actual - habitCount, habitIndex: null };
+  }
+
+  const goToActualStep = useCallback(
+    (n: number) => {
+      const safe = Math.max(1, Math.min(n, totalSteps));
+      router.push(`/onboarding?step=${safe}`);
+    },
+    [router, totalSteps],
+  );
+
+  /** Move to the next "logical" position after a legacy step finishes. */
+  const goToLegacyStep = useCallback(
+    (legacy: number) => {
+      if (legacy <= 2) {
+        goToActualStep(legacy);
+        return;
+      }
+      goToActualStep(legacy + habitCount);
+    },
+    [goToActualStep, habitCount],
+  );
+
   const runStep = useCallback(async (work: () => Promise<void>) => {
     setSaveError(null);
     setSaving(true);
@@ -136,7 +186,7 @@ function OnboardingFlow() {
         return;
       }
 
-      const [profileRes, responsesRes] = await Promise.all([
+      const [profileRes, responsesRes, answersRes] = await Promise.all([
         supabase
           .from("profiles")
           .select("display_name, circle_privacy")
@@ -147,6 +197,10 @@ function OnboardingFlow() {
           .select("*")
           .eq("user_id", user.id)
           .maybeSingle(),
+        supabase
+          .from("user_habit_answers")
+          .select("habit_id, question_id, answer")
+          .eq("user_id", user.id),
       ]);
 
       if (cancelled) return;
@@ -160,6 +214,13 @@ function OnboardingFlow() {
         ...DEFAULT_PRIVACY,
         ...(rawPrivacy ?? {}),
       };
+
+      const answersByHabit: Record<string, AnswersByQuestion> = {};
+      for (const row of answersRes.data ?? []) {
+        const habit = row.habit_id;
+        if (!answersByHabit[habit]) answersByHabit[habit] = {};
+        answersByHabit[habit][row.question_id] = row.answer as AnswerValue;
+      }
 
       setState({
         display_name: profile?.display_name ?? "",
@@ -176,6 +237,7 @@ function OnboardingFlow() {
         accountability_mode:
           (responses?.accountability_mode as AccountabilityMode) ?? "solo",
         privacy,
+        habit_answers: answersByHabit,
       });
       setLoaded(true);
     })();
@@ -183,26 +245,6 @@ function OnboardingFlow() {
       cancelled = true;
     };
   }, [router]);
-
-  const totalSteps = useMemo(
-    () =>
-      state.accountability_mode === "buddies"
-        ? TOTAL_STEPS_BUDDIES
-        : TOTAL_STEPS_SOLO,
-    [state.accountability_mode],
-  );
-
-  // The summary step is the last one. For solo path, that's step 8; for
-  // buddies it's step 10. Map the URL `step` to the displayed step.
-  const step = Math.min(requestedStep, totalSteps);
-
-  const goToStep = useCallback(
-    (n: number) => {
-      const safe = Math.max(1, Math.min(n, totalSteps));
-      router.push(`/onboarding?step=${safe}`);
-    },
-    [router, totalSteps],
-  );
 
   const requireUserId = useCallback(async (): Promise<string> => {
     const supabase = getSupabaseClient();
@@ -270,38 +312,77 @@ function OnboardingFlow() {
     const supabase = getSupabaseClient();
     const { error } = await supabase.rpc("complete_onboarding");
     if (error) throw error;
-    // Hard navigation forces the proxy to re-evaluate the session and
-    // profile state with fresh cookies, sidestepping any client-router
-    // timing issues where the proxy still sees onboarded_at = null.
     window.location.assign("/dashboard");
   }, []);
 
   const onBack = useCallback(() => {
-    if (step > 1) goToStep(step - 1);
-  }, [goToStep, step]);
+    if (step > 1) goToActualStep(step - 1);
+  }, [goToActualStep, step]);
 
-  // Step handlers — each "advance" optimistically updates local state and
-  // saves to Supabase, then routes forward. If the save throws (e.g.
-  // network error, RLS rejection), runStep keeps us on the current step
-  // and surfaces the error so the user can retry.
   const onSplashNext = useCallback(
     (display_name: string) =>
       runStep(async () => {
         await saveProfileDisplayName(display_name);
         setState((s) => ({ ...s, display_name }));
-        goToStep(2);
+        goToActualStep(2);
       }),
-    [goToStep, runStep, saveProfileDisplayName],
+    [goToActualStep, runStep, saveProfileDisplayName],
   );
 
   const onFocusNext = useCallback(
     (focus_habits: string[]) =>
       runStep(async () => {
+        const supabase = getSupabaseClient();
+        const { error: syncErr } = await supabase.rpc("sync_user_bad_habits", {
+          p_habit_ids: focus_habits,
+        });
+        if (syncErr) throw syncErr;
         await saveResponses({ focus_habits });
         setState((s) => ({ ...s, focus_habits }));
-        goToStep(3);
+        // Always go to first habit-question step (always at least 1 selected).
+        goToActualStep(FIRST_HABIT_STEP);
       }),
-    [goToStep, runStep, saveResponses],
+    [goToActualStep, runStep, saveResponses],
+  );
+
+  /**
+   * Habit-question step: save the user's answers for this habit, then advance
+   * to either the next habit or — if this is the last — to the first legacy
+   * step after Focus (Waarom).
+   */
+  const onHabitQuestionsNext = useCallback(
+    (habitIndex: number, answers: AnswersByQuestion) =>
+      runStep(async () => {
+        const habitId = state.focus_habits[habitIndex];
+        if (!habitId) {
+          // Should not happen — focus_habits length drives this index.
+          goToActualStep(FIRST_HABIT_STEP);
+          return;
+        }
+        const supabase = getSupabaseClient();
+        const { error } = await supabase.rpc("save_habit_answers", {
+          p_habit_id: habitId,
+          p_answers: answers as Record<string, AnswerValue>,
+        });
+        if (error) throw error;
+
+        setState((s) => ({
+          ...s,
+          habit_answers: {
+            ...s.habit_answers,
+            [habitId]: answers,
+          },
+        }));
+
+        const isLastHabit = habitIndex >= state.focus_habits.length - 1;
+        if (isLastHabit) {
+          // Move to first legacy step after Focus = Waarom (legacy 3).
+          goToLegacyStep(3);
+        } else {
+          goToActualStep(FIRST_HABIT_STEP + habitIndex + 1);
+        }
+      }),
+    [goToActualStep, goToLegacyStep, runStep, state.focus_habits],
   );
 
   const onWaaromNext = useCallback(
@@ -309,9 +390,9 @@ function OnboardingFlow() {
       runStep(async () => {
         await saveResponses({ desired_outcomes });
         setState((s) => ({ ...s, desired_outcomes }));
-        goToStep(4);
+        goToLegacyStep(4);
       }),
-    [goToStep, runStep, saveResponses],
+    [goToLegacyStep, runStep, saveResponses],
   );
 
   const onPatroonNext = useCallback(
@@ -319,9 +400,9 @@ function OnboardingFlow() {
       runStep(async () => {
         await saveResponses({ risk_times, risk_situations });
         setState((s) => ({ ...s, risk_times, risk_situations }));
-        goToStep(5);
+        goToLegacyStep(5);
       }),
-    [goToStep, runStep, saveResponses],
+    [goToLegacyStep, runStep, saveResponses],
   );
 
   const onTriggersNext = useCallback(
@@ -329,9 +410,9 @@ function OnboardingFlow() {
       runStep(async () => {
         await saveResponses({ triggers });
         setState((s) => ({ ...s, triggers }));
-        goToStep(6);
+        goToLegacyStep(6);
       }),
-    [goToStep, runStep, saveResponses],
+    [goToLegacyStep, runStep, saveResponses],
   );
 
   const onSupportNext = useCallback(
@@ -352,9 +433,9 @@ function OnboardingFlow() {
           support_modes,
           active_intervention,
         }));
-        goToStep(7);
+        goToLegacyStep(7);
       }),
-    [goToStep, runStep, saveResponses],
+    [goToLegacyStep, runStep, saveResponses],
   );
 
   const onAccountabilityNext = useCallback(
@@ -362,24 +443,24 @@ function OnboardingFlow() {
       runStep(async () => {
         await saveResponses({ accountability_mode });
         setState((s) => ({ ...s, accountability_mode }));
-        goToStep(8);
+        goToLegacyStep(8);
       }),
-    [goToStep, runStep, saveResponses],
+    [goToLegacyStep, runStep, saveResponses],
   );
 
   const onInviteNext = useCallback(() => {
     setSaveError(null);
-    goToStep(9);
-  }, [goToStep]);
+    goToLegacyStep(9);
+  }, [goToLegacyStep]);
 
   const onSignalsNext = useCallback(
     (privacy: CirclePrivacy) =>
       runStep(async () => {
         await savePrivacy(privacy);
         setState((s) => ({ ...s, privacy }));
-        goToStep(10);
+        goToLegacyStep(10);
       }),
-    [goToStep, runStep, savePrivacy],
+    [goToLegacyStep, runStep, savePrivacy],
   );
 
   const onComplete = useCallback(
@@ -389,6 +470,14 @@ function OnboardingFlow() {
       }),
     [completeOnboarding, runStep],
   );
+
+  // Summary "edit step" buttons: receive a legacy step number.
+  const onEditStep = useCallback(
+    (legacy: number) => goToLegacyStep(legacy),
+    [goToLegacyStep],
+  );
+
+  const resolved = useMemo(() => actualToLegacy(step), [step, habitCount]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!loaded) {
     return (
@@ -405,9 +494,6 @@ function OnboardingFlow() {
       </MobilePage>
     );
   }
-
-  // Step routing
-  const isBuddies = state.accountability_mode === "buddies";
 
   const errorToast = saveError ? (
     <div
@@ -436,22 +522,51 @@ function OnboardingFlow() {
     </>
   );
 
-  if (step === 1) {
+  // ----------------- HABIT-QUESTION SCREENS -----------------
+  if (resolved.habitIndex !== null) {
+    const idx = resolved.habitIndex;
+    const habitId = state.focus_habits[idx];
+    if (!habitId) {
+      // Range mismatch (focus_habits got smaller mid-session). Send back to focus.
+      goToActualStep(2);
+      return null;
+    }
+    return wrap(
+      <StepHabitQuestions
+        key={habitId}
+        total={totalSteps}
+        current={step}
+        habitId={habitId}
+        habitIndex={idx + 1}
+        habitCount={habitCount}
+        initialAnswers={state.habit_answers[habitId] ?? {}}
+        saving={saving}
+        onBack={onBack}
+        onNext={(answers) => onHabitQuestionsNext(idx, answers)}
+        onSkip={(defaults) => onHabitQuestionsNext(idx, defaults)}
+      />,
+    );
+  }
+
+  // ----------------- LEGACY SCREENS -----------------
+  const legacy = resolved.legacy ?? 1;
+
+  if (legacy === 1) {
     return wrap(
       <StepSplash
         total={totalSteps}
-        current={1}
+        current={step}
         displayName={state.display_name}
         saving={saving}
         onNext={onSplashNext}
-      />
+      />,
     );
   }
-  if (step === 2) {
+  if (legacy === 2) {
     return wrap(
       <StepFocus
         total={totalSteps}
-        current={2}
+        current={step}
         focusHabits={state.focus_habits}
         saving={saving}
         onBack={onBack}
@@ -459,11 +574,11 @@ function OnboardingFlow() {
       />,
     );
   }
-  if (step === 3) {
+  if (legacy === 3) {
     return wrap(
       <StepWaarom
         total={totalSteps}
-        current={3}
+        current={step}
         desiredOutcomes={state.desired_outcomes}
         saving={saving}
         onBack={onBack}
@@ -471,11 +586,11 @@ function OnboardingFlow() {
       />,
     );
   }
-  if (step === 4) {
+  if (legacy === 4) {
     return wrap(
       <StepPatroon
         total={totalSteps}
-        current={4}
+        current={step}
         riskTimes={state.risk_times}
         riskSituations={state.risk_situations}
         saving={saving}
@@ -484,11 +599,11 @@ function OnboardingFlow() {
       />,
     );
   }
-  if (step === 5) {
+  if (legacy === 5) {
     return wrap(
       <StepTriggers
         total={totalSteps}
-        current={5}
+        current={step}
         triggers={state.triggers}
         saving={saving}
         onBack={onBack}
@@ -496,11 +611,11 @@ function OnboardingFlow() {
       />,
     );
   }
-  if (step === 6) {
+  if (legacy === 6) {
     return wrap(
       <StepSupport
         total={totalSteps}
-        current={6}
+        current={step}
         toneOfVoice={state.tone_of_voice}
         supportModes={state.support_modes}
         activeIntervention={state.active_intervention}
@@ -510,11 +625,11 @@ function OnboardingFlow() {
       />,
     );
   }
-  if (step === 7) {
+  if (legacy === 7) {
     return wrap(
       <StepAccountability
         total={totalSteps}
-        current={7}
+        current={step}
         mode={state.accountability_mode}
         saving={saving}
         onBack={onBack}
@@ -523,13 +638,12 @@ function OnboardingFlow() {
     );
   }
 
-  // Step 8: solo summary OR buddies invite
-  if (step === 8) {
+  if (legacy === 8) {
     if (isBuddies) {
       return wrap(
         <StepBuddyInvite
           total={totalSteps}
-          current={8}
+          current={step}
           onBack={onBack}
           onNext={onInviteNext}
         />,
@@ -538,22 +652,21 @@ function OnboardingFlow() {
     return wrap(
       <StepSummary
         total={totalSteps}
-        current={8}
+        current={step}
         state={state}
         saving={saving}
         onBack={onBack}
-        onEditStep={goToStep}
+        onEditStep={onEditStep}
         onComplete={onComplete}
       />,
     );
   }
 
-  // Step 9 only exists for buddies path = signals
-  if (step === 9 && isBuddies) {
+  if (legacy === 9 && isBuddies) {
     return wrap(
       <StepSignals
         total={totalSteps}
-        current={9}
+        current={step}
         privacy={state.privacy}
         saving={saving}
         onBack={onBack}
@@ -562,23 +675,22 @@ function OnboardingFlow() {
     );
   }
 
-  // Step 10: buddies summary
-  if (step === 10 && isBuddies) {
+  if (legacy === 10 && isBuddies) {
     return wrap(
       <StepSummary
         total={totalSteps}
-        current={10}
+        current={step}
         state={state}
         saving={saving}
         onBack={onBack}
-        onEditStep={goToStep}
+        onEditStep={onEditStep}
         onComplete={onComplete}
       />,
     );
   }
 
   // Fallback: out-of-range step → reset to 1
-  goToStep(1);
+  goToActualStep(1);
   return null;
 }
 
