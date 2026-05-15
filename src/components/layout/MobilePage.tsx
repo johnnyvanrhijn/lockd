@@ -10,6 +10,11 @@ type MobilePageProps = {
    * to span edge-to-edge (e.g. a full-bleed image header).
    */
   flush?: boolean;
+  /**
+   * Reserve vertical space at the bottom so a floating BottomNav doesn't
+   * overlap the last items in the scroll area.
+   */
+  withBottomNav?: boolean;
 };
 
 export function MobilePage({
@@ -17,6 +22,7 @@ export function MobilePage({
   className,
   contentClassName,
   flush = false,
+  withBottomNav = false,
 }: MobilePageProps) {
   return (
     <div
@@ -30,7 +36,9 @@ export function MobilePage({
         className={cn(
           "flex w-full max-w-[430px] flex-1 flex-col",
           "pt-[max(env(safe-area-inset-top),1.5rem)]",
-          "pb-[max(env(safe-area-inset-bottom),1.5rem)]",
+          withBottomNav
+            ? "pb-[calc(max(env(safe-area-inset-bottom),1rem)+5.5rem)]"
+            : "pb-[max(env(safe-area-inset-bottom),1.5rem)]",
           flush ? "px-0" : "px-5",
           contentClassName,
         )}

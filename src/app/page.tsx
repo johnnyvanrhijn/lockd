@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { MobilePage } from "@/components/layout/MobilePage";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
@@ -27,7 +28,7 @@ export default function Home() {
         </p>
       </section>
 
-      <GlassCard glow className="mt-10">
+      <GlassCard tone="purple" glow="soft" className="mt-10">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-muted">
@@ -40,13 +41,15 @@ export default function Home() {
           <StatusBadge tone="info">Active</StatusBadge>
         </div>
         <p className="mt-4 text-sm text-muted">
-          This is a GlassCard. It uses the LOCKD surface, subtle border, and
-          a soft purple glow to feel elevated above the dark background.
+          Foundation preview. Bekijk het volledige design system voor alle
+          componenten, varianten en states.
         </p>
       </GlassCard>
 
       <div className="mt-6 flex flex-col gap-3">
-        <PrimaryButton fullWidth>Get started</PrimaryButton>
+        <Link href="/design-system" className="contents">
+          <PrimaryButton fullWidth>Bekijk design system</PrimaryButton>
+        </Link>
         <SecondaryButton fullWidth>Learn more</SecondaryButton>
       </div>
 

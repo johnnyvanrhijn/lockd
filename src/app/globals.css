@@ -1,29 +1,61 @@
 @import "tailwindcss";
 
+/* ============================================================================
+ * LOCKD DESIGN TOKENS
+ * Tailwind v4 reads CSS variables under @theme and generates utilities.
+ *   --color-X        → bg-X, text-X, border-X, ring-X, …
+ *   --radius-X       → rounded-X
+ *   --shadow-X       → shadow-X
+ *   --font-X         → font-X
+ * Use these tokens via the generated utilities or with var() in arbitrary
+ * values, e.g. `border-[var(--color-border)]`.
+ * ========================================================================== */
+
 @theme {
-  --color-background: #07060a;
-  --color-surface: #121018;
-  --color-surface-elevated: #1a1722;
-  --color-border-subtle: rgba(255, 255, 255, 0.08);
+  /* === SURFACES === */
+  --color-background: #05060a;
+  --color-surface: #10121a;
+  --color-surface-elevated: #151823;
+  --color-surface-glass: rgba(255, 255, 255, 0.04);
+
+  /* === BORDERS === */
+  --color-border: rgba(255, 255, 255, 0.08);
   --color-border-strong: rgba(255, 255, 255, 0.14);
 
-  --color-purple: #6d3df5;
+  /* === BRAND === */
+  --color-purple: #8b5cf6;
   --color-purple-bright: #a78bfa;
-  --color-purple-glow: rgba(125, 73, 247, 0.45);
+  --color-purple-glow: rgba(139, 92, 246, 0.45);
 
-  --color-success: #34d399;
-  --color-warning: #fbbf24;
-  --color-danger: #f87171;
+  /* === SEMANTIC === */
+  --color-success: #4ade80;
+  --color-warning: #fb923c;
+  --color-danger: #fb7185;
+  --color-info: #22d3ee;
 
-  --color-foreground: #f5f3ff;
-  --color-muted: #8b8597;
+  /* === TEXT === */
+  --color-foreground: #ffffff;
+  --color-muted: #a1a1aa;
 
-  --radius-card: 1.25rem;
-  --radius-button: 0.875rem;
+  /* === RADII (mobile-friendly scale) === */
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+  --radius-pill: 9999px;
 
-  --shadow-glow: 0 0 60px -10px rgba(125, 73, 247, 0.45);
+  /* === SHADOWS / GLOW SYSTEM === */
   --shadow-card: 0 20px 50px -25px rgba(0, 0, 0, 0.7);
+  --shadow-elevated: 0 24px 60px -20px rgba(0, 0, 0, 0.85);
+  --shadow-glow: 0 0 60px -10px rgba(139, 92, 246, 0.45);
+  --shadow-glow-strong: 0 0 90px -10px rgba(139, 92, 246, 0.6);
+  --shadow-glow-success: 0 0 60px -15px rgba(74, 222, 128, 0.45);
+  --shadow-glow-danger: 0 0 60px -15px rgba(251, 113, 133, 0.45);
 }
+
+/* ============================================================================
+ * BASE
+ * ========================================================================== */
 
 html,
 body {
@@ -37,19 +69,46 @@ body {
     "Segoe UI",
     sans-serif;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 body {
   background-image:
     radial-gradient(
       ellipse 80% 60% at 50% -10%,
-      rgba(125, 73, 247, 0.25),
+      rgba(139, 92, 246, 0.22),
       transparent 70%
     ),
     radial-gradient(
       ellipse 60% 50% at 100% 100%,
-      rgba(167, 139, 250, 0.12),
+      rgba(167, 139, 250, 0.1),
       transparent 70%
     );
   background-attachment: fixed;
+}
+
+/* Subtle scrollbar that matches the dark surface. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+
+/* ============================================================================
+ * UTILITIES — small helpers that aren't worth a full component.
+ * ========================================================================== */
+
+@utility surface-glass {
+  background-color: var(--color-surface-glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* ============================================================================
+ * KEYFRAMES
+ * ========================================================================== */
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
 }
