@@ -180,6 +180,40 @@ body {
   animation: lockd-pulse-soft 2.6s ease-in-out infinite;
 }
 
+/* Urge intensity slider: fills toward --urge-fill, color reflects tone zone */
+.lockd-urge-slider {
+  background: linear-gradient(
+    to right,
+    var(--urge-fill) 0%,
+    var(--urge-fill) var(--urge-pct),
+    rgba(255, 255, 255, 0.08) var(--urge-pct),
+    rgba(255, 255, 255, 0.08) 100%
+  );
+  border-radius: 9999px;
+  height: 8px;
+  outline: none;
+}
+.lockd-urge-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  background: var(--color-foreground);
+  border: 3px solid var(--urge-fill);
+  box-shadow: 0 0 18px -4px var(--urge-fill);
+  cursor: pointer;
+  margin-top: -10px;
+}
+.lockd-urge-slider::-moz-range-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  background: var(--color-foreground);
+  border: 3px solid var(--urge-fill);
+  box-shadow: 0 0 18px -4px var(--urge-fill);
+  cursor: pointer;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lockd-halo,
   .lockd-halo-slow,

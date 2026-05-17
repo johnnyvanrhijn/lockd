@@ -10,6 +10,8 @@ import type { RiskAssessment } from "@/lib/badHabits/risk";
 import type { AggregatedImpact } from "@/lib/badHabits/impact";
 import type { MoodId } from "@/lib/mood/options";
 import type { MoodPatternRow } from "@/lib/mood/client";
+import type { StrugglePattern } from "@/lib/struggle/client";
+import { TRIGGER_OPTIONS, NEED_OPTIONS, getIntervention } from "@/lib/struggle/copy";
 
 export type InsightTone = "neutral" | "purple" | "warning" | "success";
 
@@ -43,6 +45,15 @@ export type InsightsInput = {
   } | null;
   /** Active habits count. */
   activeHabitsCount: number;
+  /** Aggregated struggle pattern (null when user has 0 sessions). */
+  strugglePattern?: StrugglePattern | null;
+  /** Most-recent struggle (used when <5 total sessions). */
+  recentStruggle?: {
+    urgeReduction: number | null;
+    topTrigger: string | null;
+    selectedIntervention: string | null;
+    createdAt: string;
+  } | null;
 };
 
 const MOOD_LABEL: Record<MoodId, string> = {
@@ -73,6 +84,77 @@ const STATUS_LABEL: Record<
       `Je missie "${m.title}" raakt achter. Een kleinere herstart kan helpen.`,
   },
 };
+
+function lookupTriggerLabel(id: string): string {
+  return TRIGGER_OPTIONS.find((o) => o.id === id)?.label ?? id;
+}
+
+function lookupNeedLabel(id: string): string {
+  return NEED_OPTIONS.find((o) => o.id === id)?.label ?? id;
+}
+
+function lookupInterventionTitle(id: string): string {
+  return getIntervention(id)?.title ?? id;
+}
+
+function struggleInsights(input: InsightsInput): Insight[] {
+  const out: Insight[] = [];
+  const pattern = input.strugglePattern;
+  if (!pattern || pattern.total === 0) return out;
+
+  // ≥5 sessions: aggregated insights
+  if (pattern.total >= 5) {
+    if (pattern.topTrigger) {
+      out.push({
+        id: "struggle-top-trigger",
+        tone: "purple",
+        eyebrow: "Patroon",
+        title: "Je grootste trigger",
+        body: `${lookupTriggerLabel(pattern.topTrigger)} komt het vaakst terug in jouw struggle-momenten.`,
+      });
+    }
+    if (pattern.bestIntervention && pattern.bestInterventionDrop !== null) {
+      const pct = Math.round(pattern.bestInterventionDrop);
+      out.push({
+        id: "struggle-best-intervention",
+        tone: "success",
+        eyebrow: "Werkt voor jou",
+        title: lookupInterventionTitle(pattern.bestIntervention),
+        body: `Verlaagt je drang gemiddeld met ${pct}%.`,
+      });
+    }
+    if (pattern.passedCount > 0 && pattern.completed >= 2) {
+      out.push({
+        id: "struggle-consciousness",
+        tone: "success",
+        eyebrow: "Bewijs",
+        title: "Bewust doorgekomen",
+        body: `Je bent ${pattern.passedCount} van de ${pattern.completed} struggles bewust doorgekomen.`,
+      });
+    }
+    if (pattern.peakHour !== null) {
+      const range = `${String(pattern.peakHour).padStart(2, "0")}:00`;
+      out.push({
+        id: "struggle-peak-hour",
+        tone: "warning",
+        eyebrow: "Tijd",
+        title: "Risico-moment",
+        body: `Je struggles starten het vaakst rond ${range}.`,
+      });
+    }
+    return out;
+  }
+
+  // <5 sessions: build-up message + latest snapshot
+  out.push({
+    id: "struggle-build-up",
+    tone: "neutral",
+    eyebrow: "Patroon",
+    title: "LOCKD bouwt je patroon op",
+    body: `Na ${5 - pattern.total} ${5 - pattern.total === 1 ? "struggle" : "struggles"} zie je hier je sterkste interventie en je grootste trigger.`,
+  });
+  return out;
+}
 
 export function generateInsights(input: InsightsInput): Insight[] {
   const out: Insight[] = [];
@@ -135,7 +217,16 @@ export function generateInsights(input: InsightsInput): Insight[] {
     });
   }
 
-  // 5) Dominant impact tile — only if no other strong card filled the slot
+  // 5) Struggle pattern (top trigger / best intervention / etc.)
+  if (out.length < 3) {
+    const sIns = struggleInsights(input);
+    for (const ins of sIns) {
+      if (out.length >= 3) break;
+      out.push(ins);
+    }
+  }
+
+  // 6) Dominant impact tile — only if no other strong card filled the slot
   if (out.length < 3) {
     const top = pickDominantImpact(input.impact);
     if (top) {
@@ -151,6 +242,14 @@ export function generateInsights(input: InsightsInput): Insight[] {
 
   return out.slice(0, 3);
 }
+
+// Re-export label helpers so callers can render struggle pattern data
+// (e.g. struggle widget) using the same canonical labels.
+export {
+  lookupTriggerLabel as triggerLabel,
+  lookupNeedLabel as needLabel,
+  lookupInterventionTitle as interventionTitle,
+};
 
 function correlateMoodWithFails(
   pattern: MoodPatternRow[],

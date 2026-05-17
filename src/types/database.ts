@@ -115,19 +115,17 @@ export type Database = {
         Relationships: [];
       };
       reflections: {
-        Row: { body: string; created_at: string; id: string; urge_event_id: string | null; user_id: string };
-        Insert: { body: string; created_at?: string; id?: string; urge_event_id?: string | null; user_id: string };
-        Update: { body?: string; created_at?: string; id?: string; urge_event_id?: string | null; user_id?: string };
-        Relationships: [
-          { foreignKeyName: "reflections_urge_event_id_fkey"; columns: ["urge_event_id"]; isOneToOne: false; referencedRelation: "urge_events"; referencedColumns: ["id"] },
-        ];
+        Row: { body: string; created_at: string; id: string; user_id: string };
+        Insert: { body: string; created_at?: string; id?: string; user_id: string };
+        Update: { body?: string; created_at?: string; id?: string; user_id?: string };
+        Relationships: [];
       };
-      urge_events: {
-        Row: { abandoned_at: string | null; audio_used: boolean; completed_at: string | null; habit_id: string; id: string; intensity: number; interruption_action: string | null; started_at: string; status: string; trigger: string; updated_at: string; user_id: string };
-        Insert: { abandoned_at?: string | null; audio_used?: boolean; completed_at?: string | null; habit_id: string; id?: string; intensity: number; interruption_action?: string | null; started_at?: string; status?: string; trigger: string; updated_at?: string; user_id: string };
-        Update: { abandoned_at?: string | null; audio_used?: boolean; completed_at?: string | null; habit_id?: string; id?: string; intensity?: number; interruption_action?: string | null; started_at?: string; status?: string; trigger?: string; updated_at?: string; user_id?: string };
+      struggle_sessions: {
+        Row: { closed_at: string | null; completed_at: string | null; created_at: string; current_step: string | null; goal_id: string | null; habit_id: string | null; id: string; intervention_completed: boolean; intervention_duration_seconds: number | null; metadata: Json; protected_goal_title: string | null; protected_habit_name: string | null; reflection_tags: string[] | null; reflection_text: string | null; selected_intervention: string | null; status: string; trigger_states: string[] | null; underlying_need: string | null; urge_reduction: number | null; urge_reduction_percentage: number | null; urge_score_after: number | null; urge_score_before: number | null; user_id: string };
+        Insert: { closed_at?: string | null; completed_at?: string | null; created_at?: string; current_step?: string | null; goal_id?: string | null; habit_id?: string | null; id?: string; intervention_completed?: boolean; intervention_duration_seconds?: number | null; metadata?: Json; protected_goal_title?: string | null; protected_habit_name?: string | null; reflection_tags?: string[] | null; reflection_text?: string | null; selected_intervention?: string | null; status?: string; trigger_states?: string[] | null; underlying_need?: string | null; urge_reduction?: number | null; urge_reduction_percentage?: number | null; urge_score_after?: number | null; urge_score_before?: number | null; user_id: string };
+        Update: { closed_at?: string | null; completed_at?: string | null; created_at?: string; current_step?: string | null; goal_id?: string | null; habit_id?: string | null; id?: string; intervention_completed?: boolean; intervention_duration_seconds?: number | null; metadata?: Json; protected_goal_title?: string | null; protected_habit_name?: string | null; reflection_tags?: string[] | null; reflection_text?: string | null; selected_intervention?: string | null; status?: string; trigger_states?: string[] | null; underlying_need?: string | null; urge_reduction?: number | null; urge_reduction_percentage?: number | null; urge_score_after?: number | null; urge_score_before?: number | null; user_id?: string };
         Relationships: [
-          { foreignKeyName: "urge_events_habit_id_fkey"; columns: ["habit_id"]; isOneToOne: false; referencedRelation: "bad_habits_master"; referencedColumns: ["id"] },
+          { foreignKeyName: "struggle_sessions_goal_id_fkey"; columns: ["goal_id"]; isOneToOne: false; referencedRelation: "goals"; referencedColumns: ["id"] },
         ];
       };
       user_bad_habits: {
@@ -151,18 +149,20 @@ export type Database = {
     Views: { [_ in never]: never };
     Functions: {
       abandon_goal: { Args: { p_goal_id: string; p_with_reflection: boolean; p_reflection?: Json | null }; Returns: string | null };
-      abandon_urge_event: { Args: { p_event_id: string }; Returns: undefined };
+      close_struggle_session: { Args: { p_session_id: string }; Returns: undefined };
+      complete_struggle_session: { Args: { p_session_id: string }; Returns: undefined };
       accept_invite: { Args: { p_code: string }; Returns: string };
       clear_habit_log: { Args: { p_habit_id: string; p_log_date: string }; Returns: undefined };
       complete_goal: { Args: { p_goal_id: string; p_reflection: Json; p_status?: string }; Returns: string };
       complete_onboarding: { Args: Record<string, never>; Returns: string };
       create_goal: { Args: { p_payload: Json }; Returns: string };
-      complete_urge_event: { Args: { p_audio_used?: boolean; p_event_id: string; p_log_date: string }; Returns: undefined };
       ensure_my_invite_code: { Args: Record<string, never>; Returns: string };
       get_active_goal: { Args: Record<string, never>; Returns: Database["public"]["Tables"]["goals"]["Row"][] };
       get_circle_signals: { Args: Record<string, never>; Returns: { buddy_id: string; display_name: string; streak_days: number; has_recent_struggle: boolean; unread_pings_count: number; hou_scherp_cooldown: boolean; goed_bezig_cooldown: boolean }[] };
       get_consistency_history: { Args: { p_from: string; p_to: string }; Returns: { active: number; d: string; fail: number; pct: number; pending: number; success: number }[] };
       get_goal_detail: { Args: { p_goal_id: string }; Returns: Json };
+      get_recent_struggle: { Args: Record<string, never>; Returns: Database["public"]["Tables"]["struggle_sessions"]["Row"] | null };
+      get_struggle_pattern: { Args: Record<string, never>; Returns: Json };
       get_day_detail: { Args: { p_day: string }; Returns: { habit_id: string; name: string; status: string }[] };
       get_individual_streak: { Args: { p_habit_id: string; p_today: string }; Returns: { best_streak: number; current_streak: number; fail_count: number; success_count: number }[] };
       get_invite_preview: { Args: { p_code: string }; Returns: { expires_at: string; invite_code: string; inviter_display_name: string; inviter_id: string; status: string }[] };
@@ -170,15 +170,15 @@ export type Database = {
       get_mood_pattern: { Args: { p_days?: number }; Returns: { log_date: string; mood: string; count: number }[] };
       get_today_consistency: { Args: { p_today: string }; Returns: { active: number; fail: number; pct: number; pending: number; success: number }[] };
       get_today_mood: { Args: { p_log_date: string }; Returns: { mood: string; logged_at: string }[] };
-      get_urge_pattern: { Args: Record<string, never>; Returns: { event_count: number; peak_count: number; peak_start: number | null }[] };
       list_goals_history: { Args: { p_limit?: number }; Returns: Database["public"]["Tables"]["goals"]["Row"][] };
       log_habit: { Args: { p_habit_id: string; p_log_date: string; p_status: string }; Returns: string };
       log_mood: { Args: { p_mood: string; p_log_date: string }; Returns: string };
       save_habit_answers: { Args: { p_answers: Json; p_habit_id: string }; Returns: undefined };
       save_reflection: { Args: { p_body: string; p_urge_event_id?: string }; Returns: string };
       send_buddy_ping: { Args: { p_receiver_id: string; p_ping_type: string }; Returns: string };
-      start_urge_event: { Args: { p_habit_id: string; p_intensity: number; p_interruption_action?: string; p_trigger: string }; Returns: string };
+      start_struggle_session: { Args: { p_habit_id?: string | null; p_goal_id?: string | null; p_protected_habit_name?: string | null; p_protected_goal_title?: string | null }; Returns: string };
       sync_user_bad_habits: { Args: { p_habit_ids: string[] }; Returns: undefined };
+      update_struggle_step: { Args: { p_session_id: string; p_step: string; p_payload: Json }; Returns: undefined };
       upsert_goal_snapshot: { Args: { p_goal_id: string }; Returns: undefined };
     };
     Enums: { [_ in never]: never };

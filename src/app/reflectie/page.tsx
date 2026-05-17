@@ -12,11 +12,12 @@ import { getSupabaseClient } from "@/lib/supabase/client";
 
 type ReflectionEntry = {
   id: string;
-  kind: "open" | "missie";
+  kind: "open" | "missie" | "struggle";
   body: string;
   createdAt: string;
   goalTitle: string | null;
   result: string | null;
+  tags?: string[];
 };
 
 function formatDutchDate(iso: string): string {
@@ -53,7 +54,7 @@ export default function ReflectiePage() {
       }
       const userId = userData.user.id;
 
-      const [openRes, goalReflRes] = await Promise.all([
+      const [openRes, goalReflRes, struggleRes] = await Promise.all([
         supabase
           .from("reflections")
           .select("id, body, created_at")
@@ -66,6 +67,13 @@ export default function ReflectiePage() {
             "id, result, reflection_text, what_helped, what_made_it_hard, feeling, next_recommendation, created_at, goal_id, goals!inner(title)",
           )
           .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(50),
+        supabase
+          .from("struggle_sessions")
+          .select("id, reflection_text, reflection_tags, created_at, protected_habit_name, urge_score_before, urge_score_after")
+          .eq("user_id", userId)
+          .not("reflection_text", "is", null)
           .order("created_at", { ascending: false })
           .limit(50),
       ]);
@@ -111,7 +119,33 @@ export default function ReflectiePage() {
         };
       });
 
-      const merged = [...open, ...missions].sort((a, b) =>
+      type StruggleRefl = {
+        id: string;
+        reflection_text: string | null;
+        reflection_tags: string[] | null;
+        created_at: string;
+        protected_habit_name: string | null;
+        urge_score_before: number | null;
+        urge_score_after: number | null;
+      };
+      const struggles: ReflectionEntry[] = (
+        (struggleRes.data ?? []) as StruggleRefl[]
+      )
+        .filter((r) => r.reflection_text && r.reflection_text.trim().length > 0)
+        .map((r) => ({
+          id: r.id,
+          kind: "struggle" as const,
+          body: r.reflection_text ?? "",
+          createdAt: r.created_at,
+          goalTitle: r.protected_habit_name,
+          result:
+            r.urge_score_before !== null && r.urge_score_after !== null
+              ? `${r.urge_score_before} → ${r.urge_score_after}`
+              : null,
+          tags: r.reflection_tags ?? [],
+        }));
+
+      const merged = [...open, ...missions, ...struggles].sort((a, b) =>
         b.createdAt.localeCompare(a.createdAt),
       );
 
@@ -169,12 +203,22 @@ export default function ReflectiePage() {
               if (e.goalTitle) tags.push(e.goalTitle);
               if (e.result && RESULT_LABEL[e.result])
                 tags.push(RESULT_LABEL[e.result]);
+            } else if (e.kind === "struggle") {
+              if (e.goalTitle) tags.push(e.goalTitle);
+              if (e.result) tags.push(`Drang ${e.result}`);
+              for (const t of e.tags ?? []) tags.push(t);
             }
+            const prompt =
+              e.kind === "missie"
+                ? "Missie afgerond"
+                : e.kind === "struggle"
+                  ? "Struggle moment"
+                  : "Reflectie";
             return (
               <ReflectionCard
                 key={`${e.kind}-${e.id}`}
                 date={formatDutchDate(e.createdAt)}
-                prompt={e.kind === "missie" ? "Missie afgerond" : "Reflectie"}
+                prompt={prompt}
                 excerpt={e.body}
                 tags={tags}
               />

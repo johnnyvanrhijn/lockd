@@ -34,8 +34,7 @@ import {
 } from "@/lib/badHabits/risk";
 import type { AnswerValue, AnswersByQuestion } from "@/lib/badHabits/questions";
 import { getQuestionsForHabit } from "@/lib/badHabits/questions";
-import { StruggleOverlay } from "@/components/struggle/StruggleOverlay";
-import type { StruggleContext } from "@/lib/struggle/types";
+import { PrimaryInterventionCTA } from "@/components/dashboard/PrimaryInterventionCTA";
 import { EmotionalCheckIn } from "@/components/mood/EmotionalCheckIn";
 import type { MoodId } from "@/lib/mood/options";
 import { InnerCircleWidget } from "@/components/circle/InnerCircleWidget";
@@ -45,6 +44,7 @@ import { ActiveMissionWidget } from "@/components/dashboard/ActiveMissionWidget"
 import { generateInsights, type Insight } from "@/lib/insights/engine";
 import type { MoodPatternRow } from "@/lib/mood/client";
 import type { GoalRow } from "@/lib/goals/client";
+import { getStrugglePattern } from "@/lib/struggle/client";
 import {
   OUTCOME_OPTIONS,
   TRIGGER_OPTIONS as ONBOARDING_TRIGGER_OPTIONS,
@@ -80,31 +80,6 @@ function UserIcon() {
       <circle cx="12" cy="9" r="3.5" stroke="currentColor" strokeWidth="1.6" />
       <path
         d="M5 19c1.4-3 4-4.5 7-4.5s5.6 1.5 7 4.5"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function BrainIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M9 5a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 3 3V5Z"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M15 5a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-3 3V5Z"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M9 12h2M13 12h2"
         stroke="currentColor"
         strokeWidth="1.6"
         strokeLinecap="round"
@@ -192,10 +167,6 @@ export default function DashboardPage() {
   // Bumping this counter triggers a fresh fetch. Effects subscribe to
   // `refreshTick`; event handlers call `triggerRefresh()` to mutate it.
   const [refreshTick, setRefreshTick] = useState(0);
-  /** Drives the "Ik struggle nu" overlay. `key` re-mounts the orchestrator
-   * on every reopen so its internal state machine starts fresh. */
-  const [struggleOpen, setStruggleOpen] = useState(false);
-  const [struggleKey, setStruggleKey] = useState(0);
   const triggerRefresh = useCallback(
     () => setRefreshTick((n) => n + 1),
     [],
@@ -225,6 +196,7 @@ export default function DashboardPage() {
         todayMoodRes,
         moodPatternRes,
         activeGoalRes,
+        strugglePattern,
       ] = await Promise.all([
         supabase
           .from("profiles")
@@ -268,6 +240,7 @@ export default function DashboardPage() {
         supabase.rpc("get_today_mood", { p_log_date: logDate }),
         supabase.rpc("get_mood_pattern", { p_days: 30 }),
         supabase.rpc("get_active_goal"),
+        getStrugglePattern().catch(() => null),
       ]);
 
       const profile = profileRes.data;
@@ -451,6 +424,7 @@ export default function DashboardPage() {
             }
           : null,
         activeHabitsCount: habits.length,
+        strugglePattern,
       });
 
       return {
@@ -554,21 +528,7 @@ export default function DashboardPage() {
     [data, logDate, triggerRefresh],
   );
 
-  const struggleContext: StruggleContext | null = data
-    ? {
-        habits: data.habits.map((h) => ({
-          habit_id: h.habit_id,
-          name: h.name,
-          streak: h.streak,
-        })),
-        logDate,
-        displayName: data.displayName,
-        onboardingFacts: data.onboardingFacts,
-      }
-    : null;
-
   return (
-    <>
     <AppShell
       header={
         <GreetingHeader
@@ -620,12 +580,7 @@ export default function DashboardPage() {
             />
           )}
 
-          <StruggleCallout
-            onOpen={() => {
-              setStruggleKey((k) => k + 1);
-              setStruggleOpen(true);
-            }}
-          />
+          <PrimaryInterventionCTA />
 
           <section className="flex flex-col gap-3">
             <SectionHeader
@@ -722,17 +677,6 @@ export default function DashboardPage() {
         </div>
       )}
     </AppShell>
-
-    {struggleOpen && struggleContext && (
-      <StruggleOverlay
-        key={struggleKey}
-        open={struggleOpen}
-        context={struggleContext}
-        onClose={() => setStruggleOpen(false)}
-        onCompleted={() => triggerRefresh()}
-      />
-    )}
-    </>
   );
 }
 
@@ -795,52 +739,6 @@ function GreetingHeader({
         />
       </div>
     </header>
-  );
-}
-
-function StruggleCallout({ onOpen }: { onOpen: () => void }) {
-  return (
-    <GlassCard padding="sm">
-      <div className="flex items-center gap-3">
-        <span
-          aria-hidden
-          className={cn(
-            "flex h-11 w-11 shrink-0 items-center justify-center",
-            "rounded-[var(--radius-sm)]",
-            "bg-purple/15 text-purple-bright",
-            "[&_svg]:h-5 [&_svg]:w-5",
-          )}
-        >
-          <BrainIcon />
-        </span>
-
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="text-sm font-semibold text-foreground">
-            Het even moeilijk met iets?
-          </span>
-          <span className="text-xs text-muted">
-            Praat erover voordat je toegeeft.
-          </span>
-        </div>
-
-        <button
-          type="button"
-          onClick={onOpen}
-          className={cn(
-            "inline-flex shrink-0 items-center gap-1.5",
-            "rounded-full border border-purple/40 bg-purple/10 px-3.5 py-2",
-            "text-xs font-semibold text-purple-bright",
-            "transition-all duration-200 active:scale-[0.97]",
-            "hover:border-purple/70 hover:bg-purple/20",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-bright/70",
-            "focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-          )}
-        >
-          Ik struggle nu
-          <ArrowRight />
-        </button>
-      </div>
-    </GlassCard>
   );
 }
 
