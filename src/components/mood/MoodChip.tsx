@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils/cn";
 import type { MoodOption } from "@/lib/mood/options";
+import { MoodIcon } from "./MoodIcons";
 
 type Props = {
   option: MoodOption;
@@ -19,8 +20,8 @@ export function MoodChip({ option, selected, disabled, onSelect }: Props) {
       aria-pressed={selected}
       aria-label={option.label}
       className={cn(
-        "group flex min-w-0 flex-1 flex-col items-center gap-1.5 rounded-[var(--radius-sm)]",
-        "border bg-surface/60 px-2 py-2.5",
+        "group flex min-w-0 flex-1 flex-col items-center gap-2 rounded-[var(--radius-sm)]",
+        "border bg-surface/60 px-1.5 py-3",
         "transition-all duration-200",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-bright/60",
         selected
@@ -33,15 +34,15 @@ export function MoodChip({ option, selected, disabled, onSelect }: Props) {
       <span
         aria-hidden
         className={cn(
-          "text-2xl leading-none transition-transform",
-          selected && "scale-110",
+          "transition-colors",
+          selected ? "text-purple-bright" : "text-foreground/70 group-hover:text-foreground",
         )}
       >
-        {option.emoji}
+        <MoodIcon id={option.id} className="h-7 w-7" />
       </span>
       <span
         className={cn(
-          "text-[10px] font-semibold uppercase tracking-[0.14em]",
+          "text-[10.5px] font-medium leading-tight",
           selected ? "text-foreground" : "text-muted",
         )}
       >

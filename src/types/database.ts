@@ -16,9 +16,9 @@ export type Database = {
   public: {
     Tables: {
       mood_logs: {
-        Row: { created_at: string; id: string; log_date: string; logged_at: string; mood: string; user_id: string };
-        Insert: { created_at?: string; id?: string; log_date: string; logged_at?: string; mood: string; user_id: string };
-        Update: { created_at?: string; id?: string; log_date?: string; logged_at?: string; mood?: string; user_id?: string };
+        Row: { created_at: string; id: string; log_date: string; logged_at: string; mood: string; note: string | null; user_id: string };
+        Insert: { created_at?: string; id?: string; log_date: string; logged_at?: string; mood: string; note?: string | null; user_id: string };
+        Update: { created_at?: string; id?: string; log_date?: string; logged_at?: string; mood?: string; note?: string | null; user_id?: string };
         Relationships: [];
       };
       buddy_pings: {
@@ -172,10 +172,11 @@ export type Database = {
       get_today_mood: { Args: { p_log_date: string }; Returns: { mood: string; logged_at: string }[] };
       list_goals_history: { Args: { p_limit?: number }; Returns: Database["public"]["Tables"]["goals"]["Row"][] };
       log_habit: { Args: { p_habit_id: string; p_log_date: string; p_status: string }; Returns: string };
-      log_mood: { Args: { p_mood: string; p_log_date: string }; Returns: string };
+      log_mood: { Args: { p_mood: string; p_log_date: string; p_note?: string | null }; Returns: string };
       save_habit_answers: { Args: { p_answers: Json; p_habit_id: string }; Returns: undefined };
       save_reflection: { Args: { p_body: string; p_urge_event_id?: string }; Returns: string };
       send_buddy_ping: { Args: { p_receiver_id: string; p_ping_type: string }; Returns: string };
+      update_mood_note: { Args: { p_id: string; p_note: string }; Returns: undefined };
       start_struggle_session: { Args: { p_habit_id?: string | null; p_goal_id?: string | null; p_protected_habit_name?: string | null; p_protected_goal_title?: string | null }; Returns: string };
       sync_user_bad_habits: { Args: { p_habit_ids: string[] }; Returns: undefined };
       update_struggle_step: { Args: { p_session_id: string; p_step: string; p_payload: Json }; Returns: undefined };

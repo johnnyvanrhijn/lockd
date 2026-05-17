@@ -14,8 +14,6 @@ type Props = {
   activeCount: number;
   /** Number of habits the user kept their standard on so far. */
   successCount: number;
-  /** Consistency % for today, or null when no habits are active. */
-  pct: number | null;
   /** Whether the hero is tappable. */
   onOpenHistory?: () => void;
 };
@@ -58,7 +56,6 @@ export function IdentityHeroCard({
   bestStreak: _bestStreak,
   activeCount,
   successCount,
-  pct,
   onOpenHistory,
 }: Props) {
   void _bestStreak;
@@ -69,7 +66,9 @@ export function IdentityHeroCard({
   const ringMax = hasHabits ? activeCount : 1;
 
   const subline = hasHabits
-    ? "Elke keuze bevestigt wie je bent."
+    ? successCount === 0
+      ? "Tik op een standaard hieronder om te beschermen."
+      : "Elke keuze bevestigt wie je bent."
     : "Open je profiel om gewoontes te kiezen.";
 
   return (
@@ -117,12 +116,19 @@ export function IdentityHeroCard({
               }
             >
               <div className="flex flex-col items-center">
-                <span className="text-2xl font-semibold leading-none tabular-nums text-foreground">
-                  {pct ?? 0}
-                  <span className="text-base text-muted">%</span>
-                </span>
-                <span className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-purple-bright">
-                  Voltooid
+                {hasHabits ? (
+                  <span className="flex items-baseline gap-0.5 leading-none tabular-nums text-foreground">
+                    <span className="text-[28px] font-semibold">{successCount}</span>
+                    <span className="text-base text-muted">/</span>
+                    <span className="text-base font-medium text-muted">{activeCount}</span>
+                  </span>
+                ) : (
+                  <span className="text-xl font-semibold leading-none text-muted">
+                    —
+                  </span>
+                )}
+                <span className="mt-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-purple-bright">
+                  Beschermd
                 </span>
               </div>
             </CircularProgress>

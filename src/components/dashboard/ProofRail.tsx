@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils/cn";
 import type { AggregatedImpact } from "@/lib/badHabits/impact";
 import {
@@ -25,9 +26,12 @@ type Card = {
 };
 
 /**
- * Horizontal snap-scroll carousel of proof-of-change metrics. One card per
- * dominant metric (€, uren, kcal, fat). Always renders at least one card —
- * falls back to a "begin met loggen" prompt if all metrics are zero.
+ * Horizontal snap-scroll carousel with three visual clarity boosts:
+ *  - Smaller card width so a second card always peeks visibly
+ *  - Right-edge fade gradient signaling more content
+ *  - Dot pagination below tracking the active card
+ *
+ * Falls back to a single empty-state card if no impact data exists.
  */
 export function ProofRail({ impact, riskWindow, onOpenHistory }: Props) {
   const cards: Card[] = [];
@@ -76,6 +80,15 @@ export function ProofRail({ impact, riskWindow, onOpenHistory }: Props) {
     }
   }
 
+  if (riskWindow) {
+    cards.push({
+      id: "risk-window",
+      eyebrow: "Risico-venster",
+      value: "Patroon",
+      body: riskWindow,
+    });
+  }
+
   if (cards.length === 0) {
     return (
       <section className="flex flex-col gap-3">
@@ -110,59 +123,122 @@ export function ProofRail({ impact, riskWindow, onOpenHistory }: Props) {
             onClick={onOpenHistory}
             className="text-[11px] font-medium text-muted hover:text-foreground"
           >
-            Maand
+            Maand →
           </button>
         )}
       </div>
 
-      <div
-        className={cn(
-          "-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1",
-          "scrollbar-hidden",
+      <ProofCarousel cards={cards} />
+    </section>
+  );
+}
+
+function ProofCarousel({ cards }: { cards: ReadonlyArray<Card> }) {
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const [activeIdx, setActiveIdx] = useState(0);
+
+  // Sync activeIdx with scroll position by tracking which card is centered.
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const handler = () => {
+      const cardEls = Array.from(el.querySelectorAll<HTMLElement>("[data-proof-card]"));
+      if (cardEls.length === 0) return;
+      const scrollerCenter = el.scrollLeft + el.offsetWidth / 2;
+      let bestIdx = 0;
+      let bestDist = Infinity;
+      cardEls.forEach((card, idx) => {
+        const center = card.offsetLeft + card.offsetWidth / 2;
+        const dist = Math.abs(center - scrollerCenter);
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestIdx = idx;
+        }
+      });
+      setActiveIdx(bestIdx);
+    };
+    handler();
+    el.addEventListener("scroll", handler, { passive: true });
+    return () => el.removeEventListener("scroll", handler);
+  }, [cards.length]);
+
+  return (
+    <>
+      <div className="relative -mx-4">
+        <div
+          ref={scrollerRef}
+          className={cn(
+            "flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2",
+            "scrollbar-hidden",
+          )}
+          style={{ scrollPaddingInline: "1rem" }}
+        >
+          {cards.map((c) => (
+            <article
+              key={c.id}
+              data-proof-card
+              className={cn(
+                "snap-start shrink-0",
+                "w-[58%] min-w-[200px] max-w-[260px]",
+                "rounded-[var(--radius-md)]",
+                "border border-[var(--color-border)] bg-surface/70 p-4",
+                "shadow-[0_18px_50px_-32px_rgba(139,92,246,0.45)]",
+              )}
+            >
+              <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-purple-bright">
+                {c.eyebrow}
+              </span>
+              <div className="mt-2 text-3xl font-semibold leading-none tabular-nums text-foreground">
+                {c.value}
+              </div>
+              <p className="mt-2 text-[11px] leading-relaxed text-muted">
+                {c.body}
+              </p>
+            </article>
+          ))}
+        </div>
+        {/* Right-edge fade hint */}
+        {cards.length > 1 && (
+          <div
+            aria-hidden
+            className={cn(
+              "pointer-events-none absolute right-0 top-0 h-full w-12",
+              "bg-gradient-to-l from-background to-transparent",
+            )}
+          />
         )}
-        style={{ scrollPaddingInline: "1rem" }}
-      >
-        {cards.map((c) => (
-          <article
-            key={c.id}
+        {/* Left-edge fade once user has scrolled */}
+        {cards.length > 1 && activeIdx > 0 && (
+          <div
+            aria-hidden
             className={cn(
-              "snap-start shrink-0",
-              "w-[68%] min-w-[220px] max-w-[280px]",
-              "rounded-[var(--radius-md)]",
-              "border border-[var(--color-border)] bg-surface/70 p-4",
-              "shadow-[0_18px_50px_-32px_rgba(139,92,246,0.45)]",
+              "pointer-events-none absolute left-0 top-0 h-full w-8",
+              "bg-gradient-to-r from-background to-transparent",
             )}
-          >
-            <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-purple-bright">
-              {c.eyebrow}
-            </span>
-            <div className="mt-2 text-3xl font-semibold leading-none tabular-nums text-foreground">
-              {c.value}
-            </div>
-            <p className="mt-2 text-[11px] leading-relaxed text-muted">
-              {c.body}
-            </p>
-          </article>
-        ))}
-        {riskWindow && (
-          <article
-            className={cn(
-              "snap-start shrink-0",
-              "w-[68%] min-w-[220px] max-w-[280px]",
-              "rounded-[var(--radius-md)]",
-              "border border-purple/30 bg-purple/8 p-4",
-            )}
-          >
-            <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-purple-bright">
-              Risico-venster
-            </span>
-            <p className="mt-2 text-sm leading-relaxed text-foreground/90">
-              {riskWindow}
-            </p>
-          </article>
+          />
         )}
       </div>
-    </section>
+
+      {cards.length > 1 && (
+        <div
+          aria-label={`Pagina ${activeIdx + 1} van ${cards.length}`}
+          className="flex items-center justify-center gap-1.5"
+        >
+          {cards.map((c, idx) => (
+            <span
+              key={c.id}
+              aria-hidden
+              className={cn(
+                "h-1.5 rounded-full transition-all duration-200",
+                idx === activeIdx
+                  ? "w-5 bg-purple-bright"
+                  : "w-1.5 bg-[var(--color-border-strong)]",
+              )}
+            />
+          ))}
+        </div>
+      )}
+    </>
   );
 }
 

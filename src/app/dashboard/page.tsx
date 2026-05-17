@@ -150,7 +150,7 @@ type DashboardData = {
     desiredOutcomes: string[];
     triggers: string[];
   };
-  todayMood: MoodId | null;
+  todayMood: { id: string; mood: MoodId; note: string | null } | null;
   recentConsistencyPct: number;
   insights: Insight[];
   activeGoal: GoalRow | null;
@@ -237,7 +237,14 @@ export default function DashboardPage() {
           .select("desired_outcomes, triggers")
           .eq("user_id", userId)
           .maybeSingle(),
-        supabase.rpc("get_today_mood", { p_log_date: logDate }),
+        supabase
+          .from("mood_logs")
+          .select("id, mood, note")
+          .eq("user_id", userId)
+          .eq("log_date", logDate)
+          .order("logged_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
         supabase.rpc("get_mood_pattern", { p_days: 30 }),
         supabase.rpc("get_active_goal"),
         getStrugglePattern().catch(() => null),
@@ -441,7 +448,13 @@ export default function DashboardPage() {
         risk,
         riskWindowSentence: describeWindow(risk),
         onboardingFacts,
-        todayMood: (todayMoodRes.data?.[0]?.mood as MoodId) ?? null,
+        todayMood: todayMoodRes.data
+          ? {
+              id: todayMoodRes.data.id,
+              mood: todayMoodRes.data.mood as MoodId,
+              note: todayMoodRes.data.note ?? null,
+            }
+          : null,
         recentConsistencyPct,
         insights,
         activeGoal: activeGoalRow,
@@ -562,13 +575,13 @@ export default function DashboardPage() {
             bestStreak={data.bestStreak}
             activeCount={data.consistency.active}
             successCount={data.consistency.success}
-            pct={data.consistency.pct}
             onOpenHistory={() => router.push("/geschiedenis")}
           />
 
           {data.activeGoal && <ActiveMissionWidget goal={data.activeGoal} />}
 
           <EmotionalCheckIn
+            key={data.todayMood?.id ?? "fresh"}
             logDate={logDate}
             initialMood={data.todayMood}
           />

@@ -12,7 +12,7 @@ import { getSupabaseClient } from "@/lib/supabase/client";
 
 type ReflectionEntry = {
   id: string;
-  kind: "open" | "missie" | "struggle";
+  kind: "open" | "missie" | "struggle" | "mood";
   body: string;
   createdAt: string;
   goalTitle: string | null;
@@ -54,7 +54,7 @@ export default function ReflectiePage() {
       }
       const userId = userData.user.id;
 
-      const [openRes, goalReflRes, struggleRes] = await Promise.all([
+      const [openRes, goalReflRes, struggleRes, moodNotesRes] = await Promise.all([
         supabase
           .from("reflections")
           .select("id, body, created_at")
@@ -75,6 +75,13 @@ export default function ReflectiePage() {
           .eq("user_id", userId)
           .not("reflection_text", "is", null)
           .order("created_at", { ascending: false })
+          .limit(50),
+        supabase
+          .from("mood_logs")
+          .select("id, mood, note, logged_at")
+          .eq("user_id", userId)
+          .not("note", "is", null)
+          .order("logged_at", { ascending: false })
           .limit(50),
       ]);
       if (cancelled) return;
@@ -145,7 +152,28 @@ export default function ReflectiePage() {
           tags: r.reflection_tags ?? [],
         }));
 
-      const merged = [...open, ...missions, ...struggles].sort((a, b) =>
+      const MOOD_LABEL: Record<string, string> = {
+        prima: "Prima",
+        gestrest: "Gestrest",
+        moe: "Moe",
+        geirriteerd: "Geïrriteerd",
+        somber: "Somber",
+      };
+      type MoodRow = { id: string; mood: string; note: string | null; logged_at: string };
+      const moods: ReflectionEntry[] = (
+        (moodNotesRes.data ?? []) as MoodRow[]
+      )
+        .filter((r) => r.note && r.note.trim().length > 0)
+        .map((r) => ({
+          id: r.id,
+          kind: "mood" as const,
+          body: r.note ?? "",
+          createdAt: r.logged_at,
+          goalTitle: MOOD_LABEL[r.mood] ?? r.mood,
+          result: null,
+        }));
+
+      const merged = [...open, ...missions, ...struggles, ...moods].sort((a, b) =>
         b.createdAt.localeCompare(a.createdAt),
       );
 
@@ -207,13 +235,17 @@ export default function ReflectiePage() {
               if (e.goalTitle) tags.push(e.goalTitle);
               if (e.result) tags.push(`Drang ${e.result}`);
               for (const t of e.tags ?? []) tags.push(t);
+            } else if (e.kind === "mood") {
+              if (e.goalTitle) tags.push(e.goalTitle);
             }
             const prompt =
               e.kind === "missie"
                 ? "Missie afgerond"
                 : e.kind === "struggle"
                   ? "Struggle moment"
-                  : "Reflectie";
+                  : e.kind === "mood"
+                    ? "Stemming"
+                    : "Reflectie";
             return (
               <ReflectionCard
                 key={`${e.kind}-${e.id}`}
