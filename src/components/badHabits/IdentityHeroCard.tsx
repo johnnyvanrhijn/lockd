@@ -55,12 +55,13 @@ function HeadlineNumber({ children }: { children: ReactNode }) {
  */
 export function IdentityHeroCard({
   lockdStreak,
-  bestStreak,
+  bestStreak: _bestStreak,
   activeCount,
   successCount,
   pct,
   onOpenHistory,
 }: Props) {
+  void _bestStreak;
   const hasHabits = activeCount > 0;
   const isClickable = Boolean(onOpenHistory);
 
@@ -68,9 +69,7 @@ export function IdentityHeroCard({
   const ringMax = hasHabits ? activeCount : 1;
 
   const subline = hasHabits
-    ? lockdStreak > 0
-      ? `Beste reeks: ${bestStreak} dagen`
-      : "Vandaag is jouw eerste dag."
+    ? "Elke keuze bevestigt wie je bent."
     : "Open je profiel om gewoontes te kiezen.";
 
   return (
@@ -92,12 +91,14 @@ export function IdentityHeroCard({
           <div className="flex min-w-0 flex-col gap-1.5">
             <span className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-purple-bright">
               <ShieldGlow />
-              <span>Standaarden</span>
+              <span>Vandaag</span>
             </span>
             <div className="flex items-baseline gap-2">
               <HeadlineNumber>{lockdStreak}</HeadlineNumber>
               <span className="text-sm font-medium text-foreground/85">
-                {lockdStreak === 1 ? "dag beschermd" : "dagen beschermd"}
+                {lockdStreak === 1
+                  ? "dag volgens je standaarden"
+                  : "dagen volgens je standaarden"}
               </span>
             </div>
             <span className="text-xs text-muted">{subline}</span>
@@ -121,7 +122,7 @@ export function IdentityHeroCard({
                   <span className="text-base text-muted">%</span>
                 </span>
                 <span className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-purple-bright">
-                  Vandaag
+                  Voltooid
                 </span>
               </div>
             </CircularProgress>

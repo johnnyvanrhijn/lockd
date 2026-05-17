@@ -328,10 +328,10 @@ export default function GeschiedenisPage() {
           />
           <div className="flex min-w-0 flex-1 flex-col text-center">
             <span className="text-[11px] font-semibold uppercase tracking-[0.25em] text-purple-bright">
-              Geschiedenis
+              Terugkijken
             </span>
             <h1 className="truncate text-base font-semibold text-foreground">
-              Jouw consistentie
+              Zie wanneer je sterk was. En wanneer niet.
             </h1>
           </div>
           <span className="h-10 w-10" aria-hidden />

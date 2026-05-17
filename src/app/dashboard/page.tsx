@@ -6,10 +6,8 @@ import { AppShell } from "@/components/layout/AppShell";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { IconButton } from "@/components/ui/IconButton";
 import { LoadingSkeleton } from "@/components/ui/LoadingSkeleton";
-import {
-  BottomNav,
-  type BottomNavItem,
-} from "@/components/navigation/BottomNav";
+import { BottomNav } from "@/components/navigation/BottomNav";
+import { NAV_ITEMS, NAV_ROUTES } from "@/components/navigation/navItems";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { getBadHabitName } from "@/lib/badHabits/catalog";
 import { getActiveLogDate, subDays } from "@/lib/badHabits/clientDate";
@@ -18,7 +16,6 @@ import {
   HabitCommitmentCard,
   type CommitmentStatus,
 } from "@/components/badHabits/HabitCommitmentCard";
-import { ImpactInsightGrid } from "@/components/badHabits/ImpactInsightGrid";
 import { RiskCard } from "@/components/badHabits/RiskCard";
 import {
   StreaksRail,
@@ -39,6 +36,15 @@ import type { AnswerValue, AnswersByQuestion } from "@/lib/badHabits/questions";
 import { getQuestionsForHabit } from "@/lib/badHabits/questions";
 import { StruggleOverlay } from "@/components/struggle/StruggleOverlay";
 import type { StruggleContext } from "@/lib/struggle/types";
+import { EmotionalCheckIn } from "@/components/mood/EmotionalCheckIn";
+import type { MoodId } from "@/lib/mood/options";
+import { InnerCircleWidget } from "@/components/circle/InnerCircleWidget";
+import { ProofRail } from "@/components/dashboard/ProofRail";
+import { InsightsBlock } from "@/components/dashboard/InsightsBlock";
+import { ActiveMissionWidget } from "@/components/dashboard/ActiveMissionWidget";
+import { generateInsights, type Insight } from "@/lib/insights/engine";
+import type { MoodPatternRow } from "@/lib/mood/client";
+import type { GoalRow } from "@/lib/goals/client";
 import {
   OUTCOME_OPTIONS,
   TRIGGER_OPTIONS as ONBOARDING_TRIGGER_OPTIONS,
@@ -140,70 +146,6 @@ function ArrowRight() {
   );
 }
 
-function HomeNavIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M4 11.5L12 5l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5H14V15h-4v5.5H5.5A1.5 1.5 0 0 1 4 19v-7.5Z"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function ChartNavIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M5 19V5M5 19h14M9 15v-3M13 15V9M17 15v-5"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function NoteNavIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M6 4h9l4 4v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"
-        stroke="currentColor"
-        strokeWidth="1.6"
-      />
-      <path
-        d="M14 4v4h4M8 13h8M8 17h5"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function ProfileNavIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-      <circle cx="12" cy="9" r="3.5" stroke="currentColor" strokeWidth="1.6" />
-      <path
-        d="M5 19c1.4-3 4-4.5 7-4.5s5.6 1.5 7 4.5"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-const NAV_ITEMS: ReadonlyArray<BottomNavItem> = [
-  { id: "overview", label: "Overzicht", icon: <HomeNavIcon /> },
-  { id: "stats", label: "Statistieken", icon: <ChartNavIcon /> },
-  { id: "reflections", label: "Reflecties", icon: <NoteNavIcon /> },
-  { id: "profile", label: "Profiel", icon: <ProfileNavIcon /> },
-];
 
 /* -------------------------------------------------------------------------- */
 /*  Page                                                                      */
@@ -233,11 +175,15 @@ type DashboardData = {
     desiredOutcomes: string[];
     triggers: string[];
   };
+  todayMood: MoodId | null;
+  recentConsistencyPct: number;
+  insights: Insight[];
+  activeGoal: GoalRow | null;
 };
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState("vandaag");
   const [loaded, setLoaded] = useState(false);
   const [data, setData] = useState<DashboardData | null>(null);
   const [savingHabit, setSavingHabit] = useState<string | null>(null);
@@ -276,6 +222,9 @@ export default function DashboardPage() {
         failsRes,
         weekHistoryRes,
         responsesRes,
+        todayMoodRes,
+        moodPatternRes,
+        activeGoalRes,
       ] = await Promise.all([
         supabase
           .from("profiles")
@@ -316,6 +265,9 @@ export default function DashboardPage() {
           .select("desired_outcomes, triggers")
           .eq("user_id", userId)
           .maybeSingle(),
+        supabase.rpc("get_today_mood", { p_log_date: logDate }),
+        supabase.rpc("get_mood_pattern", { p_days: 30 }),
+        supabase.rpc("get_active_goal"),
       ]);
 
       const profile = profileRes.data;
@@ -473,6 +425,34 @@ export default function DashboardPage() {
           .filter((x): x is string => Boolean(x)),
       };
 
+      const moodPattern: MoodPatternRow[] = (moodPatternRes.data ?? []).map(
+        (r) => ({
+          logDate: r.log_date,
+          mood: r.mood as MoodId,
+          count: Number(r.count ?? 0),
+        }),
+      );
+      const recentFailDates = allFails.map((f) => f.log_date);
+
+      const activeGoalRow = (activeGoalRes.data as GoalRow[])?.[0] ?? null;
+      const insights = generateInsights({
+        risk,
+        riskSentence: describeWindow(risk),
+        impact,
+        recentConsistencyPct,
+        moodPattern,
+        recentFailDates,
+        activeMission: activeGoalRow
+          ? {
+              title: activeGoalRow.title,
+              currentDay: activeGoalRow.current_day,
+              durationDays: activeGoalRow.duration_days,
+              statusLabel: null,
+            }
+          : null,
+        activeHabitsCount: habits.length,
+      });
+
       return {
         displayName: profile?.display_name ?? null,
         habits: enriched,
@@ -487,6 +467,10 @@ export default function DashboardPage() {
         risk,
         riskWindowSentence: describeWindow(risk),
         onboardingFacts,
+        todayMood: (todayMoodRes.data?.[0]?.mood as MoodId) ?? null,
+        recentConsistencyPct,
+        insights,
+        activeGoal: activeGoalRow,
       };
     }
 
@@ -599,8 +583,8 @@ export default function DashboardPage() {
           activeId={activeTab}
           onSelect={(id) => {
             setActiveTab(id);
-            if (id === "profile") router.push("/profiel");
-            if (id === "stats") router.push("/geschiedenis");
+            const dest = NAV_ROUTES[id];
+            if (dest && dest !== "/dashboard") router.push(dest);
           }}
         />
       }
@@ -622,6 +606,13 @@ export default function DashboardPage() {
             onOpenHistory={() => router.push("/geschiedenis")}
           />
 
+          {data.activeGoal && <ActiveMissionWidget goal={data.activeGoal} />}
+
+          <EmotionalCheckIn
+            logDate={logDate}
+            initialMood={data.todayMood}
+          />
+
           {data.habits.length > 0 && (
             <RiskCard
               risk={data.risk}
@@ -638,7 +629,7 @@ export default function DashboardPage() {
 
           <section className="flex flex-col gap-3">
             <SectionHeader
-              title="Vandaag jouw standaarden"
+              title="Wat je vandaag beschermt"
               action={
                 <button
                   type="button"
@@ -680,11 +671,17 @@ export default function DashboardPage() {
           </section>
 
           {data.habits.length > 0 && (
-            <ImpactInsightGrid
+            <ProofRail
               impact={data.impact}
-              riskWindow={data.risk.windowLabel}
+              riskWindow={data.riskWindowSentence}
               onOpenHistory={() => router.push("/geschiedenis")}
             />
+          )}
+
+          <InnerCircleWidget />
+
+          {data.insights.length > 0 && (
+            <InsightsBlock insights={data.insights} />
           )}
 
           {data.habits.length > 0 && (
@@ -767,7 +764,7 @@ function GreetingHeader({
         <h1 className="text-2xl font-semibold leading-tight tracking-tight text-foreground">
           {name ? `${greeting}, ${name}` : greeting}
         </h1>
-        <p className="text-sm text-muted">Hou je standaarden vandaag.</p>
+        <p className="text-sm text-muted">Bescherm vandaag wie je aan het worden bent.</p>
       </div>
 
       <div className="flex items-center gap-2">

@@ -36,8 +36,11 @@ export default async function InvitePage({
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Server component: runs once per request. Date.now() is safe here.
+  // eslint-disable-next-line react-hooks/purity
+  const nowMs = Date.now();
   const expired = preview
-    ? new Date(preview.expires_at).getTime() < Date.now()
+    ? new Date(preview.expires_at).getTime() < nowMs
     : false;
   const isInvalid = !preview || preview.status !== "pending" || expired;
   const isOwnInvite = Boolean(
@@ -78,7 +81,7 @@ export default async function InvitePage({
             <li>3. Na accepteren staat ie in jouw circle.</li>
           </ul>
           <p className="mt-2 text-[11px] text-muted">
-            Tip: wil je 'm zelf testen? Open de link in een privé venster
+            Tip: wil je &apos;m zelf testen? Open de link in een privé venster
             of op een ander apparaat zonder ingelogd account.
           </p>
         </GlassCard>

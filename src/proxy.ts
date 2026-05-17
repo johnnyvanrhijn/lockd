@@ -7,6 +7,9 @@ const PROTECTED_PREFIXES = [
   "/profiel",
   "/onboarding",
   "/geschiedenis",
+  "/inzicht",
+  "/reflectie",
+  "/goals",
 ];
 const AUTH_PUBLIC_PATHS = ["/", "/login"];
 
@@ -57,7 +60,10 @@ export async function proxy(request: NextRequest) {
   if (
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/profiel") ||
-    pathname.startsWith("/geschiedenis")
+    pathname.startsWith("/geschiedenis") ||
+    pathname.startsWith("/inzicht") ||
+    pathname.startsWith("/reflectie") ||
+    pathname.startsWith("/goals")
   ) {
     const { data: profile } = await supabase
       .from("profiles")

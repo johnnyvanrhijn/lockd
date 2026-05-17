@@ -3,10 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
-import {
-  BottomNav,
-  type BottomNavItem,
-} from "@/components/navigation/BottomNav";
+import { BottomNav } from "@/components/navigation/BottomNav";
+import { NAV_ITEMS, NAV_ROUTES } from "@/components/navigation/navItems";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { GhostButton } from "@/components/ui/GhostButton";
@@ -43,60 +41,6 @@ import {
 import { describeAssumptions } from "@/lib/badHabits/impact";
 import { cn } from "@/lib/utils/cn";
 
-function HomeIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M4 11.5L12 5l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5H14V15h-4v5.5H5.5A1.5 1.5 0 0 1 4 19v-7.5Z"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-function ChartIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M5 19V5M5 19h14M9 15v-3M13 15V9M17 15v-5"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-function NoteIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M6 4h9l4 4v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"
-        stroke="currentColor"
-        strokeWidth="1.6"
-      />
-      <path
-        d="M14 4v4h4M8 13h8M8 17h5"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-function ProfileIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-      <circle cx="12" cy="9" r="3.5" stroke="currentColor" strokeWidth="1.6" />
-      <path
-        d="M5 19c1.4-3 4-4.5 7-4.5s5.6 1.5 7 4.5"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
 function PencilIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -129,12 +73,6 @@ function CheckIcon() {
   );
 }
 
-const NAV_ITEMS: ReadonlyArray<BottomNavItem> = [
-  { id: "overview", label: "Overzicht", icon: <HomeIcon /> },
-  { id: "stats", label: "Statistieken", icon: <ChartIcon /> },
-  { id: "reflections", label: "Reflecties", icon: <NoteIcon /> },
-  { id: "profile", label: "Profiel", icon: <ProfileIcon /> },
-];
 
 type Profile = {
   display_name: string | null;
@@ -361,9 +299,10 @@ export default function ProfilePage() {
       bottomNav={
         <BottomNav
           items={NAV_ITEMS}
-          activeId="profile"
+          activeId="jij"
           onSelect={(id) => {
-            if (id === "overview") router.push("/dashboard");
+            const dest = NAV_ROUTES[id];
+            if (dest && dest !== "/profiel") router.push(dest);
           }}
         />
       }
@@ -576,6 +515,41 @@ export default function ProfilePage() {
                 </ul>
               </GlassCard>
             )}
+          </section>
+
+          <section className="flex flex-col gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => router.push("/goals")}
+              className={cn(
+                "flex w-full items-center justify-between gap-3",
+                "rounded-[var(--radius-md)] border border-[var(--color-border)]",
+                "bg-surface/60 px-4 py-3.5 text-left",
+                "transition-colors duration-150",
+                "hover:border-[var(--color-border-strong)]",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-bright/60",
+              )}
+            >
+              <span className="flex min-w-0 flex-col gap-0.5">
+                <span className="text-sm font-semibold text-foreground">
+                  Missies & doelen
+                </span>
+                <span className="text-[11px] text-muted">
+                  Bekijk actieve en afgeronde missies.
+                </span>
+              </span>
+              <span className="text-purple-bright">
+                <svg viewBox="0 0 16 16" fill="none" aria-hidden className="h-4 w-4">
+                  <path
+                    d="M5 4l4 4-4 4"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </span>
+            </button>
           </section>
 
           <section className="flex flex-col gap-3 pt-2">
