@@ -34,7 +34,9 @@ export async function createGoal(input: CreateGoalInput): Promise<string> {
     start_date: input.startDate ?? todayLocalIsoDate(),
     goal_template_key: input.goalTemplateKey ?? null,
     custom_goal: input.customGoal ?? false,
-    // habit_id must be a UUID or null; empty string violates FK.
+    // habit_id is a text slug (matching bad_habits_master.id); null when the
+    // habit isn't tied to a master entry. Empty strings get normalized to
+    // null in the RPC via NULLIF.
     supporting: input.supporting.map((h) => ({
       habit_id: h.habitId ?? null,
       habit_name: h.name,
