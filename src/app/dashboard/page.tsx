@@ -548,7 +548,7 @@ export default function DashboardPage() {
           <LoadingSkeleton height="h-64" />
         </div>
       ) : (
-        <div className="flex flex-col gap-5">
+        <div className="lockd-stagger flex flex-col gap-5">
           <IdentityHeroCard
             lockdStreak={data.lockdStreak}
             bestStreak={data.bestStreak}

@@ -519,7 +519,9 @@ function OnboardingFlow() {
   const wrap = (node: ReactNode) => (
     <>
       {errorToast}
-      {node}
+      <div key={step} className="lockd-step-enter">
+        {node}
+      </div>
     </>
   );
 

@@ -183,7 +183,7 @@ function ProofCarousel({ cards }: { cards: ReadonlyArray<Card> }) {
           )}
           style={{ scrollPaddingInline: "1rem" }}
         >
-          {cards.map((c) => (
+          {cards.map((c, idx) => (
             <article
               key={c.id}
               data-proof-card
@@ -191,8 +191,21 @@ function ProofCarousel({ cards }: { cards: ReadonlyArray<Card> }) {
                 "snap-start shrink-0",
                 "w-[58%] min-w-[200px] max-w-[260px]",
                 "rounded-[var(--radius-md)]",
-                "border border-[var(--color-border)] bg-surface/70 p-4",
-                "shadow-[0_18px_50px_-32px_rgba(139,92,246,0.45)]",
+                "border bg-surface/70 p-4",
+                "transition-[transform,border-color,box-shadow] duration-300 ease-out",
+                "[transition-timing-function:cubic-bezier(0.22,1,0.36,1)]",
+                "will-change-transform",
+                idx === activeIdx
+                  ? [
+                      "border-purple/35",
+                      "shadow-[0_22px_60px_-32px_var(--color-purple-glow)]",
+                      "[transform:scale(1.015)]",
+                    ]
+                  : [
+                      "border-[var(--color-border)]",
+                      "shadow-[0_18px_50px_-32px_rgba(139,92,246,0.45)]",
+                      "[transform:scale(1)]",
+                    ],
               )}
             >
               <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-purple-bright">

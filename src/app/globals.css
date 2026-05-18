@@ -230,6 +230,80 @@ body {
               background-color 200ms ease-out;
 }
 
+/* ===== Step transitions =====================================================
+ * Onboarding step content. The wrapper is key-keyed so React remounts on
+ * each step change; the animation fires once on mount. Translate + opacity
+ * only, no layout-driving properties.
+ */
+@keyframes lockd-step-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.995);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.lockd-step-enter {
+  animation: lockd-step-enter 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ===== Staggered reveal =====================================================
+ * Lights cards in sequence on dashboard cold-mount. Each child fades-rises
+ * with a small additional delay. Capped at 12 children: anything past that
+ * just appears with no delay.
+ */
+.lockd-stagger > * {
+  animation: lockd-fade-rise 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.lockd-stagger > *:nth-child(1)  { animation-delay: 0ms; }
+.lockd-stagger > *:nth-child(2)  { animation-delay: 40ms; }
+.lockd-stagger > *:nth-child(3)  { animation-delay: 80ms; }
+.lockd-stagger > *:nth-child(4)  { animation-delay: 120ms; }
+.lockd-stagger > *:nth-child(5)  { animation-delay: 160ms; }
+.lockd-stagger > *:nth-child(6)  { animation-delay: 200ms; }
+.lockd-stagger > *:nth-child(7)  { animation-delay: 240ms; }
+.lockd-stagger > *:nth-child(8)  { animation-delay: 280ms; }
+.lockd-stagger > *:nth-child(9)  { animation-delay: 320ms; }
+.lockd-stagger > *:nth-child(10) { animation-delay: 360ms; }
+.lockd-stagger > *:nth-child(11) { animation-delay: 400ms; }
+.lockd-stagger > *:nth-child(12) { animation-delay: 440ms; }
+
+/* ===== One-shot status pulse ================================================
+ * Single 600ms glow that expands then fades. Fired on a key-keyed sibling
+ * overlay so each instance is a fresh remount → animation plays once.
+ */
+@keyframes lockd-pulse-success {
+  0%   { opacity: 0; box-shadow: 0 0 0 -10px rgba(74, 222, 128, 0); }
+  20%  { opacity: 1; box-shadow: 0 0 40px -6px rgba(74, 222, 128, 0.55); }
+  100% { opacity: 0; box-shadow: 0 0 0 -10px rgba(74, 222, 128, 0); }
+}
+@keyframes lockd-pulse-danger {
+  0%   { opacity: 0; box-shadow: 0 0 0 -10px rgba(251, 113, 133, 0); }
+  20%  { opacity: 1; box-shadow: 0 0 40px -6px rgba(251, 113, 133, 0.55); }
+  100% { opacity: 0; box-shadow: 0 0 0 -10px rgba(251, 113, 133, 0); }
+}
+.lockd-pulse-once-success {
+  animation: lockd-pulse-success 600ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.lockd-pulse-once-danger {
+  animation: lockd-pulse-danger 600ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ===== Mood selection confirm ===============================================
+ * Tiny one-shot lift on the icon when a mood is freshly selected. Communicates
+ * "your tap registered" without being decorative.
+ */
+@keyframes lockd-mood-confirm {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+.lockd-mood-confirm {
+  animation: lockd-mood-confirm 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lockd-halo,
   .lockd-halo-slow,
@@ -243,5 +317,12 @@ body {
   .lockd-progress-stroke,
   .lockd-dot-indicator {
     transition-duration: 1ms;
+  }
+  .lockd-step-enter,
+  .lockd-stagger > *,
+  .lockd-pulse-once-success,
+  .lockd-pulse-once-danger,
+  .lockd-mood-confirm {
+    animation-duration: 1ms;
   }
 }

@@ -32,10 +32,13 @@ export function MoodChip({ option, selected, disabled, onSelect }: Props) {
       )}
     >
       <span
+        key={selected ? "active" : "idle"}
         aria-hidden
         className={cn(
           "transition-colors",
-          selected ? "text-purple-bright" : "text-foreground/70 group-hover:text-foreground",
+          selected
+            ? "lockd-mood-confirm text-purple-bright"
+            : "text-foreground/70 group-hover:text-foreground",
         )}
       >
         <MoodIcon id={option.id} className="h-7 w-7" />

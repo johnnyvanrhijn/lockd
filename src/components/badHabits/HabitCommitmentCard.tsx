@@ -118,6 +118,20 @@ export function HabitCommitmentCard({
             : "border-[var(--color-border)]",
       )}
     >
+      {/* One-shot glow overlay. animKey bumps on every action, remounting the
+       * span so its animation plays fresh. Pending state has no pulse. */}
+      {animKey > 0 && status !== "pending" && (
+        <span
+          key={`pulse-${animKey}-${status}`}
+          aria-hidden
+          className={cn(
+            "pointer-events-none absolute inset-0 rounded-[var(--radius-md)]",
+            status === "success"
+              ? "lockd-pulse-once-success"
+              : "lockd-pulse-once-danger",
+          )}
+        />
+      )}
       <div className="flex items-center justify-between gap-3 px-4 pt-3.5">
         <div className="flex min-w-0 items-center gap-2">
           <span
