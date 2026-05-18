@@ -2,11 +2,16 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils/cn";
 import { GlassCard } from "./GlassCard";
 import { MoodBadge, type Mood } from "./MoodBadge";
+import { MoodIcon } from "@/components/mood/MoodIcons";
+import type { MoodId } from "@/lib/mood/options";
 
 type ReflectionCardProps = {
   /** Display date — already formatted (e.g. "Vandaag", "12 mei"). */
   date: ReactNode;
+  /** Legacy mood badge (5-state). Kept for back-compat. */
   mood?: Mood;
+  /** LOCKD MoodId for line-icon rendering (overrides `mood`). */
+  moodId?: MoodId;
   /** First-line summary (e.g. "Wat ging goed?"). */
   prompt?: ReactNode;
   /** The reflection text itself. */
@@ -20,6 +25,7 @@ type ReflectionCardProps = {
 export function ReflectionCard({
   date,
   mood,
+  moodId,
   prompt,
   excerpt,
   tags,
@@ -33,10 +39,16 @@ export function ReflectionCard({
       className={cn("flex flex-col gap-3", className)}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-medium uppercase tracking-[0.2em] text-muted">
+        <span className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.2em] text-muted">
+          {moodId && (
+            <MoodIcon
+              id={moodId}
+              className="h-5 w-5 shrink-0 text-purple-bright"
+            />
+          )}
           {date}
         </span>
-        {mood && <MoodBadge mood={mood} />}
+        {!moodId && mood && <MoodBadge mood={mood} />}
       </div>
 
       {prompt && (
