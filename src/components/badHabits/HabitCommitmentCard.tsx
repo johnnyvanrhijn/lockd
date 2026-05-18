@@ -121,6 +121,11 @@ export function HabitCommitmentCard({
       <div className="flex items-center justify-between gap-3 px-4 pt-3.5">
         <div className="flex min-w-0 items-center gap-2">
           <span
+            aria-label={
+              streakDays >= 30
+                ? `${streakDays} dagen, locked in`
+                : `${streakDays} dagen streak`
+            }
             className={cn(
               "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums",
               streakDays >= 30
@@ -134,6 +139,17 @@ export function HabitCommitmentCard({
             {streakDays}
             <span className="text-[10px] font-medium opacity-80">d</span>
           </span>
+          {streakDays >= 30 && (
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full px-2 py-0.5",
+                "text-[10px] font-semibold uppercase tracking-[0.14em]",
+                "bg-success/12 text-success",
+              )}
+            >
+              Locked in
+            </span>
+          )}
           <h3 className="truncate text-sm font-semibold text-foreground">
             {name}
           </h3>
@@ -151,8 +167,8 @@ export function HabitCommitmentCard({
           onClick={() => handle("success", onSuccess)}
           aria-pressed={status === "success"}
           className={cn(
-            "flex flex-1 items-center justify-center gap-1.5 rounded-[var(--radius-sm)] px-3 py-2.5",
-            "border text-xs font-semibold transition-all duration-200",
+            "flex flex-1 items-center justify-center gap-1.5 rounded-[var(--radius-sm)] px-3",
+            "min-h-[44px] border text-xs font-semibold transition-all duration-200",
             "active:scale-[0.98]",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-success/60",
             "disabled:cursor-not-allowed disabled:opacity-50",
@@ -177,8 +193,8 @@ export function HabitCommitmentCard({
           onClick={() => handle("fail", onFail)}
           aria-pressed={status === "fail"}
           className={cn(
-            "flex flex-1 items-center justify-center gap-1.5 rounded-[var(--radius-sm)] px-3 py-2.5",
-            "border text-xs font-semibold transition-all duration-200",
+            "flex flex-1 items-center justify-center gap-1.5 rounded-[var(--radius-sm)] px-3",
+            "min-h-[44px] border text-xs font-semibold transition-all duration-200",
             "active:scale-[0.98]",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger/60",
             "disabled:cursor-not-allowed disabled:opacity-50",

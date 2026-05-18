@@ -94,10 +94,7 @@ export function CircularProgress({
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={dashOffset}
-          style={{
-            transition:
-              "stroke-dashoffset 600ms cubic-bezier(0.22, 1, 0.36, 1)",
-          }}
+          className="lockd-progress-stroke"
         />
       </svg>
       {children && (

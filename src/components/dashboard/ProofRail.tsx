@@ -137,29 +137,39 @@ function ProofCarousel({ cards }: { cards: ReadonlyArray<Card> }) {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const [activeIdx, setActiveIdx] = useState(0);
 
-  // Sync activeIdx with scroll position by tracking which card is centered.
+  // Sync activeIdx with the most-visible card using IntersectionObserver.
+  // Cheaper than a scroll listener (no per-frame work) and accurate enough
+  // for snap-scroll where one card is dominant at a time.
   useEffect(() => {
     const el = scrollerRef.current;
     if (!el) return;
-    const handler = () => {
-      const cardEls = Array.from(el.querySelectorAll<HTMLElement>("[data-proof-card]"));
-      if (cardEls.length === 0) return;
-      const scrollerCenter = el.scrollLeft + el.offsetWidth / 2;
-      let bestIdx = 0;
-      let bestDist = Infinity;
-      cardEls.forEach((card, idx) => {
-        const center = card.offsetLeft + card.offsetWidth / 2;
-        const dist = Math.abs(center - scrollerCenter);
-        if (dist < bestDist) {
-          bestDist = dist;
-          bestIdx = idx;
+    const cardEls = Array.from(el.querySelectorAll<HTMLElement>("[data-proof-card]"));
+    if (cardEls.length === 0) return;
+
+    const visibility = new Map<HTMLElement, number>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          visibility.set(entry.target as HTMLElement, entry.intersectionRatio);
         }
-      });
-      setActiveIdx(bestIdx);
-    };
-    handler();
-    el.addEventListener("scroll", handler, { passive: true });
-    return () => el.removeEventListener("scroll", handler);
+        let bestEl: HTMLElement | null = null;
+        let bestRatio = -1;
+        for (const [card, ratio] of visibility) {
+          if (ratio > bestRatio) {
+            bestRatio = ratio;
+            bestEl = card;
+          }
+        }
+        if (bestEl) {
+          const idx = cardEls.indexOf(bestEl);
+          if (idx >= 0) setActiveIdx(idx);
+        }
+      },
+      { root: el, threshold: [0.25, 0.5, 0.75, 1] },
+    );
+
+    for (const card of cardEls) observer.observe(card);
+    return () => observer.disconnect();
   }, [cards.length]);
 
   return (
@@ -229,7 +239,7 @@ function ProofCarousel({ cards }: { cards: ReadonlyArray<Card> }) {
               key={c.id}
               aria-hidden
               className={cn(
-                "h-1.5 rounded-full transition-all duration-200",
+                "lockd-dot-indicator h-1.5 rounded-full",
                 idx === activeIdx
                   ? "w-5 bg-purple-bright"
                   : "w-1.5 bg-[var(--color-border-strong)]",

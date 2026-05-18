@@ -165,6 +165,7 @@ export type Database = {
       get_struggle_pattern: { Args: Record<string, never>; Returns: Json };
       get_day_detail: { Args: { p_day: string }; Returns: { habit_id: string; name: string; status: string }[] };
       get_individual_streak: { Args: { p_habit_id: string; p_today: string }; Returns: { best_streak: number; current_streak: number; fail_count: number; success_count: number }[] };
+      get_individual_streaks: { Args: { p_today: string }; Returns: { habit_id: string; current_streak: number }[] };
       get_invite_preview: { Args: { p_code: string }; Returns: { expires_at: string; invite_code: string; inviter_display_name: string; inviter_id: string; status: string }[] };
       get_lockd_streak: { Args: { p_today: string }; Returns: { best_streak: number; current_streak: number }[] };
       get_mood_pattern: { Args: { p_days?: number }; Returns: { log_date: string; mood: string; count: number }[] };

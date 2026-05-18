@@ -55,25 +55,6 @@ import { cn } from "@/lib/utils/cn";
 /*  Icons                                                                     */
 /* -------------------------------------------------------------------------- */
 
-function BellIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M6 9a6 6 0 0 1 12 0v3.5l1.6 2.7a.7.7 0 0 1-.6 1.1H5a.7.7 0 0 1-.6-1.1L6 12.5V9Z"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M10 19a2 2 0 1 0 4 0"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
 function UserIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -158,7 +139,6 @@ type DashboardData = {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState("vandaag");
   const [loaded, setLoaded] = useState(false);
   const [data, setData] = useState<DashboardData | null>(null);
   const [savingHabit, setSavingHabit] = useState<string | null>(null);
@@ -264,18 +244,14 @@ export default function DashboardPage() {
             : "pending";
       }
 
-      const streakPromises = habits.map((h) =>
-        supabase.rpc("get_individual_streak", {
-          p_habit_id: h.habit_id,
-          p_today: logDate,
-        }),
+      const { data: streakRows } = await supabase.rpc(
+        "get_individual_streaks",
+        { p_today: logDate },
       );
-      const streakResults = await Promise.all(streakPromises);
       const streakByHabit: Record<string, number> = {};
-      habits.forEach((h, i) => {
-        const row = streakResults[i].data?.[0];
-        streakByHabit[h.habit_id] = row?.current_streak ?? 0;
-      });
+      for (const row of streakRows ?? []) {
+        streakByHabit[row.habit_id] = row.current_streak ?? 0;
+      }
 
       type HabitJoin = {
         habit_id: string;
@@ -546,16 +522,14 @@ export default function DashboardPage() {
       header={
         <GreetingHeader
           name={data?.displayName ?? null}
-          hasUnread={false}
           onProfile={() => router.push("/profiel")}
         />
       }
       bottomNav={
         <BottomNav
           items={NAV_ITEMS}
-          activeId={activeTab}
+          activeId="vandaag"
           onSelect={(id) => {
-            setActiveTab(id);
             const dest = NAV_ROUTES[id];
             if (dest && dest !== "/dashboard") router.push(dest);
           }}
@@ -563,7 +537,12 @@ export default function DashboardPage() {
       }
     >
       {!loaded || !data ? (
-        <div className="flex flex-col gap-4 pt-2">
+        <div
+          role="status"
+          aria-busy="true"
+          aria-label="Dashboard laden"
+          className="flex flex-col gap-4 pt-2"
+        >
           <LoadingSkeleton height="h-44" />
           <LoadingSkeleton height="h-16" />
           <LoadingSkeleton height="h-64" />
@@ -602,9 +581,10 @@ export default function DashboardPage() {
                 <button
                   type="button"
                   onClick={() => router.push("/profiel")}
+                  aria-label="Bewerk je gewoontes"
                   className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full px-2 py-1",
-                    "text-xs font-medium text-muted",
+                    "inline-flex items-center gap-1.5 rounded-full px-3",
+                    "min-h-[44px] text-xs font-medium text-muted",
                     "transition-colors duration-150 hover:text-foreground",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-bright/70",
                   )}
@@ -617,8 +597,8 @@ export default function DashboardPage() {
             {data.habits.length === 0 ? (
               <GlassCard tone="elevated" padding="md">
                 <p className="text-sm text-muted">
-                  Nog geen eigenschappen geselecteerd. Open je profiel om
-                  gewoontes te kiezen.
+                  Nog geen gewoontes geselecteerd. Open je profiel om er een
+                  toe te voegen.
                 </p>
               </GlassCard>
             ) : (
@@ -676,7 +656,7 @@ export default function DashboardPage() {
             >
               <span className="flex flex-col">
                 <span className="text-sm font-semibold text-foreground">
-                  Geschiedenis
+                  Terugkijken
                 </span>
                 <span className="text-[11px] text-muted">
                   Bekijk elke dag dat je stand hield.
@@ -707,11 +687,9 @@ function getTimeGreeting(): string {
 
 function GreetingHeader({
   name,
-  hasUnread,
   onProfile,
 }: {
   name: string | null;
-  hasUnread?: boolean;
   onProfile?: () => void;
 }) {
   const greeting = getTimeGreeting();
@@ -724,33 +702,13 @@ function GreetingHeader({
         <p className="text-sm text-muted">Bescherm vandaag wie je aan het worden bent.</p>
       </div>
 
-      <div className="flex items-center gap-2">
-        <div className="relative">
-          <IconButton
-            aria-label="Meldingen"
-            icon={<BellIcon />}
-            variant="secondary"
-            size="md"
-          />
-          {hasUnread && (
-            <span
-              aria-hidden
-              className={cn(
-                "absolute right-1 top-1 h-2.5 w-2.5 rounded-full",
-                "bg-purple-bright shadow-[0_0_10px_-2px_var(--color-purple-glow)]",
-                "ring-2 ring-background",
-              )}
-            />
-          )}
-        </div>
-        <IconButton
-          aria-label="Profiel"
-          icon={<UserIcon />}
-          variant="secondary"
-          size="md"
-          onClick={onProfile}
-        />
-      </div>
+      <IconButton
+        aria-label="Profiel"
+        icon={<UserIcon />}
+        variant="secondary"
+        size="md"
+        onClick={onProfile}
+      />
     </header>
   );
 }

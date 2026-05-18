@@ -140,8 +140,8 @@ export function EmotionalCheckIn({ logDate, initialMood }: Props) {
         {noteOpen && selected && (
           <div
             className={cn(
-              "lockd-fade-rise flex flex-col gap-2 rounded-[var(--radius-sm)]",
-              "border border-[var(--color-border)] bg-surface-elevated/60 p-3",
+              "lockd-fade-rise flex flex-col gap-2.5",
+              "border-t border-[var(--color-border)] pt-3",
             )}
           >
             <div className="flex items-center justify-between gap-2">
@@ -160,9 +160,9 @@ export function EmotionalCheckIn({ logDate, initialMood }: Props) {
               autoFocus
               className={cn(
                 "w-full resize-none rounded-[var(--radius-sm)]",
-                "border border-[var(--color-border)] bg-surface/60 px-3 py-2",
+                "bg-surface-elevated/60 px-3 py-2",
                 "text-[13px] leading-relaxed text-foreground placeholder:text-muted",
-                "outline-none focus:border-purple/60",
+                "outline-none focus:bg-surface-elevated/90 focus:shadow-[inset_0_0_0_1px_var(--color-purple)]",
               )}
             />
             <div className="flex items-center gap-2">
@@ -171,7 +171,7 @@ export function EmotionalCheckIn({ logDate, initialMood }: Props) {
                 onClick={handleSaveNote}
                 disabled={savingNote || note.trim().length === 0}
                 className={cn(
-                  "flex-1 rounded-full px-3 py-2 text-[11px] font-semibold",
+                  "flex-1 rounded-full px-3 min-h-[44px] text-[11px] font-semibold",
                   "border border-purple/40 bg-purple/15 text-purple-bright",
                   "transition-colors hover:bg-purple/25",
                   "disabled:cursor-not-allowed disabled:opacity-50",
@@ -185,7 +185,7 @@ export function EmotionalCheckIn({ logDate, initialMood }: Props) {
                 onClick={handleSkipNote}
                 disabled={savingNote}
                 className={cn(
-                  "rounded-full px-3 py-2 text-[11px] font-medium",
+                  "rounded-full px-4 min-h-[44px] text-[11px] font-medium",
                   "text-muted hover:text-foreground transition-colors",
                 )}
               >

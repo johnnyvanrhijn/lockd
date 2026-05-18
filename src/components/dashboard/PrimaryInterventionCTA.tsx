@@ -39,6 +39,7 @@ export function PrimaryInterventionCTA({
     <button
       type="button"
       onClick={open}
+      aria-label="Open struggle flow"
       className={cn(
         "group relative block w-full overflow-hidden rounded-[var(--radius-md)]",
         "border border-purple/45 bg-gradient-to-br from-purple/18 via-purple/10 to-transparent",

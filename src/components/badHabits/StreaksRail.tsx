@@ -90,9 +90,16 @@ function StreakChip({ entry, rank }: { entry: StreakEntry; rank: number }) {
         >
           {rank}
         </span>
-        <span className="truncate text-sm font-semibold text-foreground">
-          {entry.name}
-        </span>
+        <div className="flex min-w-0 flex-col">
+          <span className="truncate text-sm font-semibold text-foreground">
+            {entry.name}
+          </span>
+          {lockedIn && (
+            <span className="text-[9.5px] font-semibold uppercase tracking-[0.18em] text-success">
+              Locked in
+            </span>
+          )}
+        </div>
       </div>
       <div
         className={cn(
