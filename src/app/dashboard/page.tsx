@@ -37,6 +37,7 @@ import { InnerCircleWidget } from "@/components/circle/InnerCircleWidget";
 import { ProofRail } from "@/components/dashboard/ProofRail";
 import { InsightsBlock } from "@/components/dashboard/InsightsBlock";
 import { ActiveMissionWidget } from "@/components/dashboard/ActiveMissionWidget";
+import { MilestoneCelebration } from "@/components/goals/MilestoneCelebration";
 import { generateInsights, type Insight } from "@/lib/insights/engine";
 import type { MoodPatternRow } from "@/lib/mood/client";
 import type { GoalRow } from "@/lib/goals/client";
@@ -604,6 +605,15 @@ export default function DashboardPage() {
             <ProofRail
               impact={data.impact}
               onOpenHistory={() => router.push("/geschiedenis")}
+            />
+          )}
+
+          {data.activeGoal && (
+            <MilestoneCelebration
+              goalId={data.activeGoal.id}
+              currentDay={data.activeGoal.current_day}
+              durationDays={data.activeGoal.duration_days}
+              title={data.activeGoal.title}
             />
           )}
 

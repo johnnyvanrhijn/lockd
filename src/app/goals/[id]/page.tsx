@@ -26,6 +26,8 @@ import {
   type BehaviorSignal,
 } from "@/lib/goals/engine";
 import { CATEGORY_LABEL, type GoalCategory } from "@/lib/goals/templates";
+import { MissionStrip, type MissionDay } from "@/components/goals/MissionStrip";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils/cn";
 
 function BackArrow() {
@@ -48,7 +50,18 @@ type ViewData = {
   remainingDays: number;
   signal: BehaviorSignal;
   statusLabel: ReturnType<typeof deriveStatusLabel>;
+  dailyStrip: MissionDay[];
 };
+
+function isoDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function addDays(iso: string, n: number): string {
+  const d = new Date(iso);
+  d.setDate(d.getDate() + n);
+  return isoDate(d);
+}
 
 export default function GoalDetailPage() {
   const params = useParams<{ id: string }>();
@@ -80,6 +93,48 @@ export default function GoalDetailPage() {
           sabotageFailCount: sabFails,
         });
 
+        // Build per-day status strip from habit_logs of linked sabotage habits
+        // within the mission window. Days without any fail = "success"; days
+        // with at least one fail = "slip"; today gets its own highlight; days
+        // beyond today (within duration) = "future".
+        const start = detail.goal.start_date;
+        const duration = detail.goal.duration_days;
+        const todayIso = isoDate(new Date());
+        const linkedIds = linkedSabotage
+          .map((h) => h.habit_id)
+          .filter((x): x is string => Boolean(x));
+
+        const slipDates = new Set<string>();
+        if (linkedIds.length > 0) {
+          const supabase = getSupabaseClient();
+          const { data: userData } = await supabase.auth.getUser();
+          if (userData.user) {
+            const { data: logs } = await supabase
+              .from("habit_logs")
+              .select("habit_id, log_date, status")
+              .eq("user_id", userData.user.id)
+              .eq("status", "fail")
+              .in("habit_id", linkedIds)
+              .gte("log_date", start)
+              .lte("log_date", detail.goal.target_end_date);
+            for (const l of logs ?? []) slipDates.add(l.log_date);
+          }
+        }
+
+        const dailyStrip: MissionDay[] = [];
+        for (let i = 0; i < duration; i++) {
+          const date = addDays(start, i);
+          if (date > todayIso) {
+            dailyStrip.push("future");
+          } else if (date === todayIso) {
+            dailyStrip.push("today");
+          } else if (slipDates.has(date)) {
+            dailyStrip.push("slip");
+          } else {
+            dailyStrip.push("success");
+          }
+        }
+
         setView({
           detail,
           timeProgressPct: computeTimeProgress(
@@ -89,6 +144,7 @@ export default function GoalDetailPage() {
           remainingDays: computeRemainingDays(detail.goal.target_end_date),
           signal,
           statusLabel: deriveStatusLabel(signal),
+          dailyStrip,
         });
         setLoaded(true);
       } catch (err) {
@@ -146,6 +202,10 @@ export default function GoalDetailPage() {
         <div className="flex flex-col gap-5 pb-8">
           <HeroCard view={view} />
           <ProgressCard view={view} />
+          <MissionStrip
+            days={view.dailyStrip}
+            durationDays={view.detail.goal.duration_days}
+          />
           {view.detail.goal.status === "active" && (
             <TodayFocus detail={view.detail} />
           )}

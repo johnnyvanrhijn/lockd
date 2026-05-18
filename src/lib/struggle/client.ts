@@ -125,11 +125,18 @@ export async function resolveProtectedTarget(): Promise<{
   goalId: string | null;
   protectedHabitName: string | null;
   protectedGoalTitle: string | null;
+  protectedGoalWhy: string | null;
 }> {
   const supabase = getSupabaseClient();
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) {
-    return { habitId: null, goalId: null, protectedHabitName: null, protectedGoalTitle: null };
+    return {
+      habitId: null,
+      goalId: null,
+      protectedHabitName: null,
+      protectedGoalTitle: null,
+      protectedGoalWhy: null,
+    };
   }
 
   // 1) Active goal
@@ -173,6 +180,7 @@ export async function resolveProtectedTarget(): Promise<{
       goalId: activeGoal.id,
       protectedHabitName: topHabitName,
       protectedGoalTitle: activeGoal.title,
+      protectedGoalWhy: activeGoal.why ?? null,
     };
   }
 
@@ -182,6 +190,7 @@ export async function resolveProtectedTarget(): Promise<{
       goalId: null,
       protectedHabitName: topHabitName,
       protectedGoalTitle: null,
+      protectedGoalWhy: null,
     };
   }
 
@@ -190,5 +199,6 @@ export async function resolveProtectedTarget(): Promise<{
     goalId: null,
     protectedHabitName: null,
     protectedGoalTitle: null,
+    protectedGoalWhy: null,
   };
 }

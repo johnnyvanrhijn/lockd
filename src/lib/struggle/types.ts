@@ -32,6 +32,7 @@ export type StruggleFlowState = {
   reflectionTags: string[];
   protectedHabitName: string | null;
   protectedGoalTitle: string | null;
+  protectedGoalWhy: string | null;
   reflectOnly: boolean;
 };
 
@@ -40,4 +41,5 @@ export type StruggleContext = {
   goalId: string | null;
   protectedHabitName: string | null;
   protectedGoalTitle: string | null;
+  protectedGoalWhy: string | null;
 };

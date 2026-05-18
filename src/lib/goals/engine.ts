@@ -75,8 +75,8 @@ export function deriveStatusLabel(signal: BehaviorSignal): StatusLabel {
 
 export const STATUS_LABEL_TEXT: Record<StatusLabel, string> = {
   op_schema: "Op schema",
-  loopt_risico: "Loopt risico",
-  achter_op_schema: "Achter op schema",
+  loopt_risico: "Vraagt aandacht",
+  achter_op_schema: "Herstel-modus",
 };
 
 export const SIGNAL_LABEL_TEXT: Record<BehaviorSignal, string> = {
@@ -88,6 +88,7 @@ export const SIGNAL_LABEL_TEXT: Record<BehaviorSignal, string> = {
 
 /**
  * Project the projected outcome sentence shown on /goals/[id].
+ * Risk signals are reframed as recovery opportunities, not failure.
  */
 export function projectionSentence(args: {
   signal: BehaviorSignal;
@@ -95,7 +96,9 @@ export function projectionSentence(args: {
 }): string {
   const { signal, remainingDays } = args;
   if (signal === "risk") {
-    return "Je missie loopt risico door meerdere gemiste dagen.";
+    return remainingDays === 0
+      ? "Een paar slips, maar je hebt het volgehouden. Reflecteer voor de volgende stap."
+      : `Een paar slips. Je missie loopt nog. Nog ${remainingDays} ${remainingDays === 1 ? "dag" : "dagen"} om te herstellen.`;
   }
   if (signal === "neutral") {
     return remainingDays === 0
@@ -112,23 +115,57 @@ export function projectionSentence(args: {
 
 /**
  * Next-mission recommendation based on the most recent goal's final_result.
+ * Optionally personalized with a concrete template suggestion when the user's
+ * focus_habits or category can be matched to a known template.
  */
 export type NextMissionHint = {
   copy: string;
   /** Suggested duration in days, optional. */
   suggestedDurationDays?: number;
+  /** Suggested template key from GOAL_TEMPLATES, optional. */
+  suggestedTemplateKey?: string;
 };
 
 export function nextMissionRecommendation(
   lastResult: "achieved" | "partially_achieved" | "not_achieved" | null,
+  args?: {
+    /** Previous goal's template key, for "scale up same family" logic. */
+    previousTemplateKey?: string | null;
+    /** User's onboarding focus_habits — used to pick a personalized template. */
+    focusHabits?: ReadonlyArray<string>;
+  },
 ): NextMissionHint | null {
   if (!lastResult) return null;
+
   if (lastResult === "achieved") {
+    // Scale up: if previous template was 7d, suggest the 30d version of same family.
+    const scaleUp = scaleUpTemplate(args?.previousTemplateKey ?? null);
+    if (scaleUp) {
+      return {
+        copy: `Je vorige missie is behaald. Probeer ${scaleUp.label}.`,
+        suggestedDurationDays: scaleUp.durationDays,
+        suggestedTemplateKey: scaleUp.key,
+      };
+    }
     return {
       copy: "Je vorige missie is behaald. Je kunt nu opschalen naar 14 of 30 dagen.",
       suggestedDurationDays: 14,
     };
   }
+
+  // partially_achieved or not_achieved: scale down to 7d, prefer a personalized template.
+  const personal = pickFocusBasedTemplate(args?.focusHabits ?? []);
+  if (personal) {
+    return {
+      copy:
+        lastResult === "partially_achieved"
+          ? `Houd het klein. Probeer ${personal.label} (7 dagen).`
+          : `Kleiner én concreter. Probeer ${personal.label} (7 dagen).`,
+      suggestedDurationDays: 7,
+      suggestedTemplateKey: personal.key,
+    };
+  }
+
   if (lastResult === "partially_achieved") {
     return {
       copy: "Probeer een 7-dagen versie. Focus op één concrete gewoonte.",
@@ -139,6 +176,58 @@ export function nextMissionRecommendation(
     copy: "Maak je volgende missie kleiner. Kies 7 dagen en bescherm één concrete gewoonte.",
     suggestedDurationDays: 7,
   };
+}
+
+/** Map a previous template key to its 30-day big sibling (if one exists). */
+function scaleUpTemplate(
+  prev: string | null,
+): { key: string; label: string; durationDays: number } | null {
+  if (!prev) return null;
+  const SCALE_MAP: Record<string, { key: string; label: string; durationDays: number }> = {
+    "7d_niet_roken": { key: "30d_stoppen_roken", label: "30 dagen stoppen met roken", durationDays: 30 },
+    "7d_niet_blowen": { key: "30d_niet_blowen", label: "30 dagen niet blowen", durationDays: 30 },
+    "4x_trainen_week": { key: "x_keer_trainen_maand", label: "X keer trainen per maand", durationDays: 30 },
+    "10000_stappen_dag": { key: "x_keer_trainen_maand", label: "X keer trainen per maand", durationDays: 30 },
+  };
+  return SCALE_MAP[prev] ?? null;
+}
+
+/** Pick a 7d "starter" template that matches one of the user's focus habits. */
+function pickFocusBasedTemplate(
+  focusHabits: ReadonlyArray<string>,
+): { key: string; label: string } | null {
+  if (focusHabits.length === 0) return null;
+  // Prefer the first focus habit so the recommendation feels primary.
+  const FOCUS_MAP: Record<string, { key: string; label: string }> = {
+    smoking: { key: "7d_niet_roken", label: "7 dagen niet roken" },
+    weed: { key: "7d_niet_blowen", label: "7 dagen niet blowen" },
+    porn: { key: "14d_geen_porno", label: "14 dagen geen porno" },
+    alcohol: { key: "30d_geen_alcohol", label: "30 dagen geen alcohol" },
+    doomscroll: { key: "minder_schermtijd", label: "Minder schermtijd" },
+    overspending: { key: "14d_geen_impulsaankopen", label: "14 dagen geen impulsaankopen" },
+    social_media: { key: "minder_schermtijd", label: "Minder schermtijd" },
+    unnecessary_snacking: { key: "5kg_afvallen", label: "5 kg afvallen" },
+    emotional_eating: { key: "5kg_afvallen", label: "5 kg afvallen" },
+    stress_eating: { key: "5kg_afvallen", label: "5 kg afvallen" },
+    late_sleep: { key: "minder_schermtijd", label: "Minder schermtijd" },
+  };
+  for (const h of focusHabits) {
+    const match = FOCUS_MAP[h];
+    if (match) return match;
+  }
+  return null;
+}
+
+/**
+ * Pick the best template to PRE-SELECT when the user opens /goals/new.
+ * Returns the template key matching the user's primary focus_habit, or null.
+ * Used by the smart-defaults wiring.
+ */
+export function suggestStartingTemplate(
+  focusHabits: ReadonlyArray<string>,
+): string | null {
+  const m = pickFocusBasedTemplate(focusHabits);
+  return m?.key ?? null;
 }
 
 export function computeTargetEndDate(

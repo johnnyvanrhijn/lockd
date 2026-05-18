@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { IconButton } from "@/components/ui/IconButton";
@@ -16,8 +16,16 @@ import {
 import {
   computeTargetEndDate,
   formatGoalDate,
+  suggestStartingTemplate,
 } from "@/lib/goals/engine";
 import { createGoal } from "@/lib/goals/client";
+import { getSupabaseClient } from "@/lib/supabase/client";
+import { getBadHabitName } from "@/lib/badHabits/catalog";
+import type {
+  AnswerValue,
+  AnswersByQuestion,
+} from "@/lib/badHabits/questions";
+import { MissionImpactProjection } from "@/components/goals/MissionImpactProjection";
 import { cn } from "@/lib/utils/cn";
 
 type Step = 1 | 2 | 3 | 4 | 5;
@@ -53,11 +61,32 @@ function BackArrow() {
   );
 }
 
+type UserContext = {
+  displayName: string | null;
+  focusHabits: string[];
+  activeBadHabits: Array<{ habitId: string; name: string }>;
+  habitAnswers: Record<string, AnswersByQuestion>;
+};
+
 export default function NewGoalPage() {
+  return (
+    <Suspense fallback={null}>
+      <NewGoalInner />
+    </Suspense>
+  );
+}
+
+function NewGoalInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const templateParam = searchParams.get("template");
   const [step, setStep] = useState<Step>(1);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [userContext, setUserContext] = useState<UserContext | null>(null);
+  // Ref instead of state: applying defaults shouldn't trigger a re-render,
+  // and the React 19 lint rule rejects setState calls inside effect bodies.
+  const defaultsAppliedRef = useRef(false);
   const [sel, setSel] = useState<Selections>({
     templateKey: null,
     customTitle: "",
@@ -67,6 +96,118 @@ export default function NewGoalPage() {
     sabotage: [],
     durationDays: 7,
   });
+
+  // Load the user's onboarding focus + active habits + habit answers so we can
+  // (a) pre-select a starting template, (b) pre-fill sabotage habits on the
+  // "Eigen doel" path, and (c) project impact at the duration step.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const supabase = getSupabaseClient();
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) return;
+      const userId = userData.user.id;
+      const [profileRes, responsesRes, habitsRes, answersRes] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("display_name")
+          .eq("id", userId)
+          .maybeSingle(),
+        supabase
+          .from("onboarding_responses")
+          .select("focus_habits")
+          .eq("user_id", userId)
+          .maybeSingle(),
+        supabase
+          .from("user_bad_habits")
+          .select("habit_id")
+          .eq("user_id", userId)
+          .eq("active", true),
+        supabase
+          .from("user_habit_answers")
+          .select("habit_id, question_id, answer")
+          .eq("user_id", userId),
+      ]);
+      if (cancelled) return;
+
+      const focus = (responsesRes.data?.focus_habits as string[] | null) ?? [];
+      const active = (habitsRes.data ?? []).map((h) => ({
+        habitId: h.habit_id,
+        name: getBadHabitName(h.habit_id),
+      }));
+      const grouped: Record<string, AnswersByQuestion> = {};
+      for (const row of answersRes.data ?? []) {
+        const h = row.habit_id;
+        if (!grouped[h]) grouped[h] = {};
+        grouped[h][row.question_id] = row.answer as AnswerValue;
+      }
+      setUserContext({
+        displayName: profileRes.data?.display_name ?? null,
+        focusHabits: focus,
+        activeBadHabits: active,
+        habitAnswers: grouped,
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Apply smart-default template once — query param takes precedence over
+  // the focus-habit suggestion. Only runs if the user hasn't picked yet.
+  // The setSel calls inside this effect are guarded by `defaultsAppliedRef`
+  // and only fire on the *initial* render after async data lands, which is
+  // exactly the use case the (overly broad) react-you-might-not-need-an-effect
+  // rule is unable to recognize.
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (defaultsAppliedRef.current) return;
+    if (sel.templateKey !== null) {
+      defaultsAppliedRef.current = true;
+      return;
+    }
+    // URL hint first (e.g. from /goals recommendation card).
+    if (templateParam) {
+      const t = GOAL_TEMPLATES.find((x) => x.key === templateParam);
+      if (t) {
+        defaultsAppliedRef.current = true;
+        setSel((s) => ({
+          ...s,
+          templateKey: t.key,
+          customTitle: "",
+          whys: [],
+          customWhy: "",
+          supporting: [...t.supporting],
+          sabotage: [...t.sabotage],
+          durationDays: t.durationDays,
+        }));
+        return;
+      }
+    }
+    if (!userContext) return; // wait for user context before focus-based fallback
+    const suggested = suggestStartingTemplate(userContext.focusHabits);
+    if (!suggested) {
+      defaultsAppliedRef.current = true;
+      return;
+    }
+    const t = GOAL_TEMPLATES.find((x) => x.key === suggested);
+    if (!t) {
+      defaultsAppliedRef.current = true;
+      return;
+    }
+    defaultsAppliedRef.current = true;
+    setSel((s) => ({
+      ...s,
+      templateKey: t.key,
+      customTitle: "",
+      whys: [],
+      customWhy: "",
+      supporting: [...t.supporting],
+      sabotage: [...t.sabotage],
+      durationDays: t.durationDays,
+    }));
+  }, [userContext, sel.templateKey, templateParam]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const template = useMemo<GoalTemplate | null>(() => {
     if (!sel.templateKey || sel.templateKey === "eigen_doel") return null;
@@ -78,13 +219,20 @@ export default function NewGoalPage() {
 
   function handlePickTemplate(key: string) {
     if (key === "eigen_doel") {
+      // For custom missions, pre-fill sabotage with the user's active bad
+      // habits so they don't start from a blank slate.
+      const seededSabotage: SuggestedHabit[] =
+        userContext?.activeBadHabits.map((h) => ({
+          name: h.name,
+          habitId: h.habitId,
+        })) ?? [];
       setSel((s) => ({
         ...s,
         templateKey: key,
         whys: [],
         customWhy: "",
         supporting: [],
-        sabotage: [],
+        sabotage: seededSabotage,
         durationDays: 7,
       }));
       return;
@@ -150,10 +298,12 @@ export default function NewGoalPage() {
       router.push(`/goals/${goalId}`);
     } catch (err) {
       console.error("[goals] create failed:", err);
-      const msg =
-        err instanceof Error && err.message.includes("active goal exists")
-          ? "Je hebt al een actieve missie. Rond die eerst af."
-          : "Kon je missie niet starten. Probeer het opnieuw.";
+      const raw = err instanceof Error ? err.message : String(err);
+      const msg = raw.includes("active goal exists")
+        ? "Je hebt al een actieve missie. Rond die eerst af."
+        : raw.includes("auth") || raw.includes("Niet ingelogd")
+          ? "Je sessie is verlopen. Vernieuw de pagina en log opnieuw in."
+          : `Kon je missie niet starten. ${raw}`;
       setError(msg);
       setSubmitting(false);
     }
@@ -228,6 +378,8 @@ export default function NewGoalPage() {
           <Step4
             durationDays={sel.durationDays}
             onChange={(d) => setSel((s) => ({ ...s, durationDays: d }))}
+            sabotage={sel.sabotage}
+            habitAnswers={userContext?.habitAnswers ?? {}}
           />
         )}
 
@@ -238,6 +390,7 @@ export default function NewGoalPage() {
             durationDays={sel.durationDays}
             supporting={sel.supporting}
             sabotage={sel.sabotage}
+            displayName={userContext?.displayName ?? null}
           />
         )}
 
@@ -618,9 +771,13 @@ function HabitGroup({
 function Step4({
   durationDays,
   onChange,
+  sabotage,
+  habitAnswers,
 }: {
   durationDays: number;
   onChange: (d: number) => void;
+  sabotage: SuggestedHabit[];
+  habitAnswers: Record<string, AnswersByQuestion>;
 }) {
   const isCustom = !DURATION_CHIPS.some((c) => c.days === durationDays);
   const [customMode, setCustomMode] = useState(isCustom);
@@ -713,11 +870,17 @@ function Step4({
           </span>
         </div>
       </div>
+
+      <MissionImpactProjection
+        sabotage={sabotage}
+        durationDays={durationDays}
+        habitAnswers={habitAnswers}
+      />
     </div>
   );
 }
 
-/* ------------ Step 5: Summary ------------ */
+/* ------------ Step 5: Commitment moment ------------ */
 
 function Step5({
   title,
@@ -725,107 +888,88 @@ function Step5({
   durationDays,
   supporting,
   sabotage,
+  displayName,
 }: {
   title: string;
   why: string;
   durationDays: number;
   supporting: SuggestedHabit[];
   sabotage: SuggestedHabit[];
+  displayName: string | null;
 }) {
   const startDate = new Date();
   const startStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, "0")}-${String(startDate.getDate()).padStart(2, "0")}`;
   const end = computeTargetEndDate(startStr, durationDays);
+  const supportCount = supporting.length;
+  const sabotageCount = sabotage.length;
 
   return (
-    <div className="flex flex-col gap-5">
-      <header className="flex flex-col gap-1">
-        <h2 className="text-2xl font-semibold leading-tight text-foreground">
-          Je missie staat klaar
+    <div className="flex flex-col gap-6">
+      <header className="flex flex-col gap-2 pt-2 text-center">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.32em] text-purple-bright/85">
+          Klaar?
+        </span>
+        <h2 className="text-3xl font-bold leading-tight tracking-tight text-foreground">
+          {displayName
+            ? `Ik bescherm dit, ${displayName}.`
+            : "Ik bescherm dit."}
         </h2>
-        <p className="text-sm text-muted">Bevestig en start.</p>
       </header>
 
-      <GlassCard tone="purple" glow="soft" padding="md">
-        <div className="flex flex-col gap-3">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-purple-bright">
-            Missie
+      <GlassCard tone="purple" glow="soft" padding="lg">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.28em] text-purple-bright/80">
+            Mijn missie
           </span>
-          <h3 className="text-xl font-semibold leading-tight text-foreground">
+          <h3 className="text-2xl font-semibold leading-tight text-foreground">
             {title || "—"}
           </h3>
-          <p className="text-sm leading-relaxed text-foreground/85">
-            <span className="text-muted">Waarom:</span> {why || "—"}
-          </p>
+          <div className="flex items-baseline gap-1 pt-1">
+            <span className="text-3xl font-bold tabular-nums text-foreground">
+              {durationDays}
+            </span>
+            <span className="text-sm font-medium text-muted">
+              {durationDays === 1 ? "dag" : "dagen"} · tot {formatGoalDate(end)}
+            </span>
+          </div>
         </div>
       </GlassCard>
 
-      <div className="grid grid-cols-2 gap-3">
-        <SummaryTile label="Duur" value={`${durationDays} dagen`} />
-        <SummaryTile label="Eindigt" value={formatGoalDate(end)} />
-      </div>
-
-      <SummaryHabits
-        title="Bescherm"
-        kind="support"
-        habits={supporting}
-      />
-      <SummaryHabits
-        title="Vermijd"
-        kind="sabotage"
-        habits={sabotage}
-      />
-    </div>
-  );
-}
-
-function SummaryTile({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col gap-1 rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-surface/60 p-3">
-      <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted">
-        {label}
-      </span>
-      <span className="text-sm font-semibold tabular-nums text-foreground">
-        {value}
-      </span>
-    </div>
-  );
-}
-
-function SummaryHabits({
-  title,
-  kind,
-  habits,
-}: {
-  title: string;
-  kind: "support" | "sabotage";
-  habits: SuggestedHabit[];
-}) {
-  if (habits.length === 0) return null;
-  return (
-    <section className="flex flex-col gap-2">
-      <h3
-        className={cn(
-          "px-1 text-[10px] font-semibold uppercase tracking-[0.22em]",
-          kind === "support" ? "text-success" : "text-warning",
-        )}
-      >
-        {title}
-      </h3>
-      <div className="flex flex-wrap gap-1.5">
-        {habits.map((h, i) => (
-          <span
-            key={`${h.name}-${i}`}
-            className={cn(
-              "rounded-full px-3 py-1.5 text-[11px] font-medium",
-              kind === "support"
-                ? "border border-success/30 bg-success/10 text-success"
-                : "border border-warning/30 bg-warning/10 text-warning",
-            )}
-          >
-            {h.name}
+      {why && (
+        <div className="flex flex-col gap-2 px-2">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.28em] text-muted/80">
+            Mijn waarom
           </span>
-        ))}
-      </div>
-    </section>
+          <p className="text-base leading-relaxed text-foreground/95">
+            <span aria-hidden className="text-purple-bright/70">
+              &ldquo;
+            </span>
+            {why}
+            <span aria-hidden className="text-purple-bright/70">
+              &rdquo;
+            </span>
+          </p>
+        </div>
+      )}
+
+      {(supportCount > 0 || sabotageCount > 0) && (
+        <div className="flex items-center justify-center gap-2 text-[11px] text-muted">
+          {supportCount > 0 && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-success/30 bg-success/10 px-2.5 py-1 text-success">
+              {supportCount} bescherm
+            </span>
+          )}
+          {sabotageCount > 0 && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-warning/30 bg-warning/10 px-2.5 py-1 text-warning">
+              {sabotageCount} vermijd
+            </span>
+          )}
+        </div>
+      )}
+
+      <p className="px-2 text-center text-[11px] leading-relaxed text-muted/80">
+        LOCKD herinnert je hieraan op de momenten waarop het er toe doet.
+      </p>
+    </div>
   );
 }

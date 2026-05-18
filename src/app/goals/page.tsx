@@ -22,8 +22,10 @@ import {
   deriveStatusLabel,
   formatGoalDate,
   nextMissionRecommendation,
+  type NextMissionHint,
 } from "@/lib/goals/engine";
 import { CATEGORY_LABEL, type GoalCategory } from "@/lib/goals/templates";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils/cn";
 
 type ActiveSummary = {
@@ -67,15 +69,27 @@ export default function GoalsPage() {
   const [loaded, setLoaded] = useState(false);
   const [active, setActive] = useState<ActiveSummary | null>(null);
   const [history, setHistory] = useState<GoalRow[]>([]);
+  const [focusHabits, setFocusHabits] = useState<string[]>([]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const [activeGoal, hist] = await Promise.all([
+        const supabase = getSupabaseClient();
+        const { data: userData } = await supabase.auth.getUser();
+        const userId = userData.user?.id;
+        const [activeGoal, hist, responsesRes] = await Promise.all([
           getActiveGoal(),
           listGoalsHistory(20),
+          userId
+            ? supabase
+                .from("onboarding_responses")
+                .select("focus_habits")
+                .eq("user_id", userId)
+                .maybeSingle()
+            : Promise.resolve({ data: null }),
         ]);
+        const focus = (responsesRes.data?.focus_habits as string[] | null) ?? [];
 
         let summary: ActiveSummary | null = null;
         if (activeGoal) {
@@ -110,6 +124,7 @@ export default function GoalsPage() {
         if (!cancelled) {
           setActive(summary);
           setHistory(hist);
+          setFocusHabits(focus);
           setLoaded(true);
         }
       } catch (err) {
@@ -176,12 +191,23 @@ export default function GoalsPage() {
 
           {!active && history.length > 0 && (
             <RecommendationCard
-              lastResult={
+              hint={nextMissionRecommendation(
                 (history[0]?.final_result as
                   | "achieved"
                   | "partially_achieved"
                   | "not_achieved"
-                  | null) ?? null
+                  | null) ?? null,
+                {
+                  previousTemplateKey: history[0]?.goal_template_key ?? null,
+                  focusHabits,
+                },
+              )}
+              onStart={(templateKey) =>
+                router.push(
+                  templateKey
+                    ? `/goals/new?template=${encodeURIComponent(templateKey)}`
+                    : "/goals/new",
+                )
               }
             />
           )}
@@ -344,19 +370,42 @@ function ActiveMissionCard({
 }
 
 function RecommendationCard({
-  lastResult,
+  hint,
+  onStart,
 }: {
-  lastResult: "achieved" | "partially_achieved" | "not_achieved" | null;
+  hint: NextMissionHint | null;
+  onStart: (templateKey?: string) => void;
 }) {
-  const hint = nextMissionRecommendation(lastResult);
   if (!hint) return null;
+  const hasTemplate = Boolean(hint.suggestedTemplateKey);
   return (
-    <GlassCard padding="md">
-      <div className="flex flex-col gap-2">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-purple-bright">
-          Aanbeveling
-        </span>
+    <GlassCard padding="md" tone={hasTemplate ? "purple" : "default"}>
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-purple-bright">
+            Aanbeveling
+          </span>
+          {hint.suggestedDurationDays && (
+            <span className="text-[10px] uppercase tracking-[0.2em] text-muted">
+              {hint.suggestedDurationDays}d
+            </span>
+          )}
+        </div>
         <p className="text-sm leading-relaxed text-foreground/90">{hint.copy}</p>
+        <button
+          type="button"
+          onClick={() => onStart(hint.suggestedTemplateKey)}
+          className={cn(
+            "self-start inline-flex items-center gap-1.5 rounded-full",
+            "border border-purple/50 bg-purple/15 px-3.5 py-2",
+            "text-xs font-semibold text-purple-bright",
+            "transition-colors duration-150 hover:bg-purple/25",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-bright/60",
+          )}
+        >
+          {hasTemplate ? "Start deze missie" : "Nieuwe missie starten"}
+          <ArrowRight />
+        </button>
       </div>
     </GlassCard>
   );

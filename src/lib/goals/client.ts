@@ -17,6 +17,11 @@ export type CreateGoalInput = {
   sabotage: SuggestedHabit[];
 };
 
+function todayLocalIsoDate(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 export async function createGoal(input: CreateGoalInput): Promise<string> {
   const supabase = getSupabaseClient();
   const payload = {
@@ -24,15 +29,18 @@ export async function createGoal(input: CreateGoalInput): Promise<string> {
     category: input.category,
     why: input.why,
     duration_days: input.durationDays,
-    start_date: input.startDate,
+    // Default to today's local date when caller doesn't set it. The RPC
+    // computes target_end_date from this, so it must be a valid YYYY-MM-DD.
+    start_date: input.startDate ?? todayLocalIsoDate(),
     goal_template_key: input.goalTemplateKey ?? null,
     custom_goal: input.customGoal ?? false,
+    // habit_id must be a UUID or null; empty string violates FK.
     supporting: input.supporting.map((h) => ({
-      habit_id: h.habitId ?? "",
+      habit_id: h.habitId ?? null,
       habit_name: h.name,
     })),
     sabotage: input.sabotage.map((h) => ({
-      habit_id: h.habitId ?? "",
+      habit_id: h.habitId ?? null,
       habit_name: h.name,
     })),
   };

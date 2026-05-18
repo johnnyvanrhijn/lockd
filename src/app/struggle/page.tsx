@@ -50,6 +50,7 @@ const INITIAL_STATE: StruggleFlowState = {
   reflectionTags: [],
   protectedHabitName: null,
   protectedGoalTitle: null,
+  protectedGoalWhy: null,
   reflectOnly: false,
 };
 
@@ -95,6 +96,7 @@ function StruggleFlowInner() {
           goalId: target.goalId,
           protectedHabitName: target.protectedHabitName,
           protectedGoalTitle: target.protectedGoalTitle,
+          protectedGoalWhy: target.protectedGoalWhy,
         }));
       } catch (err) {
         console.error("[struggle] boot failed:", err);
@@ -259,6 +261,7 @@ function StruggleFlowInner() {
         {state.step === "identity" && (
           <StepIdentity
             protectedGoalTitle={state.protectedGoalTitle}
+            protectedGoalWhy={state.protectedGoalWhy}
             protectedHabitName={state.protectedHabitName}
             onNext={() => persist("intervention", {})}
             onClose={requestClose}
@@ -610,11 +613,13 @@ function StepUrgeBefore({
 
 function StepIdentity({
   protectedGoalTitle,
+  protectedGoalWhy,
   protectedHabitName,
   onNext,
   onClose,
 }: {
   protectedGoalTitle: string | null;
+  protectedGoalWhy: string | null;
   protectedHabitName: string | null;
   onNext: () => void;
   onClose: () => void;
@@ -639,6 +644,27 @@ function StepIdentity({
 
       <div className="flex w-full flex-col gap-3 pt-1">
         <IdentityRow label={goalRowLabel} value={goalLabel} />
+        {protectedGoalWhy && (
+          <div
+            className={cn(
+              "flex flex-col gap-1 rounded-[var(--radius-sm)]",
+              "border border-purple/40 bg-purple/8 px-4 py-3 text-left",
+            )}
+          >
+            <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-purple-bright">
+              Jouw waarom
+            </span>
+            <span className="text-sm leading-relaxed text-foreground/95">
+              <span aria-hidden className="text-purple-bright/70">
+                &ldquo;
+              </span>
+              {protectedGoalWhy}
+              <span aria-hidden className="text-purple-bright/70">
+                &rdquo;
+              </span>
+            </span>
+          </div>
+        )}
         <IdentityRow label="Vandaag bescherm je" value={habitLabel} />
       </div>
 
