@@ -298,7 +298,7 @@ function NewGoalInner() {
       router.push(`/goals/${goalId}`);
     } catch (err) {
       console.error("[goals] create failed:", err);
-      const raw = err instanceof Error ? err.message : String(err);
+      const raw = extractErrorMessage(err);
       const msg = raw.includes("active goal exists")
         ? "Je hebt al een actieve missie. Rond die eerst af."
         : raw.includes("auth") || raw.includes("Niet ingelogd")
@@ -306,6 +306,33 @@ function NewGoalInner() {
           : `Kon je missie niet starten. ${raw}`;
       setError(msg);
       setSubmitting(false);
+    }
+  }
+
+  /**
+   * Robust error→string for Supabase errors. PostgrestError objects are plain
+   * objects (not Error instances) shaped as { message, details, hint, code }.
+   * Stringifying them via String(err) yields "[object Object]" — useless.
+   */
+  function extractErrorMessage(err: unknown): string {
+    if (!err) return "Onbekende fout";
+    if (err instanceof Error) return err.message;
+    if (typeof err === "string") return err;
+    if (typeof err === "object") {
+      const o = err as Record<string, unknown>;
+      const parts: string[] = [];
+      if (typeof o.message === "string" && o.message.length > 0)
+        parts.push(o.message);
+      if (typeof o.hint === "string" && o.hint.length > 0)
+        parts.push(`(${o.hint})`);
+      if (parts.length === 0 && typeof o.code === "string")
+        parts.push(`code ${o.code}`);
+      if (parts.length > 0) return parts.join(" ");
+    }
+    try {
+      return JSON.stringify(err);
+    } catch {
+      return String(err);
     }
   }
 
