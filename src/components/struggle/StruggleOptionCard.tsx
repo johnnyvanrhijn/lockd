@@ -10,6 +10,8 @@ type Props = {
   selected: boolean;
   onSelect: () => void;
   disabled?: boolean;
+  /** Accent. 'antidote' renders in success/green for catalog-derived options. */
+  tone?: "default" | "antidote";
 };
 
 /**
@@ -23,7 +25,9 @@ export function StruggleOptionCard({
   selected,
   onSelect,
   disabled,
+  tone = "default",
 }: Props) {
+  const isAntidote = tone === "antidote";
   return (
     <button
       type="button"
@@ -34,9 +38,14 @@ export function StruggleOptionCard({
         "group flex w-full items-start gap-3 rounded-[var(--radius-sm)]",
         "border px-4 py-3.5 text-left",
         "transition-all duration-150",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-bright/60",
+        "focus-visible:outline-none focus-visible:ring-2",
+        isAntidote
+          ? "focus-visible:ring-success/60"
+          : "focus-visible:ring-purple-bright/60",
         selected
-          ? "border-purple/60 bg-purple/12 shadow-[0_0_28px_-14px_var(--color-purple-glow)]"
+          ? isAntidote
+            ? "border-success/55 bg-success/12 shadow-[0_0_28px_-14px_rgba(74,222,128,0.55)]"
+            : "border-purple/60 bg-purple/12 shadow-[0_0_28px_-14px_var(--color-purple-glow)]"
           : "border-[var(--color-border)] bg-surface/60 hover:border-[var(--color-border-strong)]",
         disabled && "cursor-not-allowed opacity-50",
         "active:scale-[0.997]",
@@ -51,7 +60,12 @@ export function StruggleOptionCard({
         )}
       </div>
       {meta && (
-        <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.18em] text-purple-bright">
+        <span
+          className={cn(
+            "shrink-0 text-[11px] font-semibold uppercase tracking-[0.18em]",
+            isAntidote ? "text-success" : "text-purple-bright",
+          )}
+        >
           {meta}
         </span>
       )}

@@ -20,7 +20,13 @@ import {
 } from "@/lib/goals/engine";
 import { createGoal } from "@/lib/goals/client";
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { getBadHabitName } from "@/lib/badHabits/catalog";
+import {
+  getBadHabitName,
+  DEFAULT_BAD_HABITS,
+  GOOD_HABITS,
+  GOOD_HABIT_CATEGORIES,
+  type MasterHabit,
+} from "@/lib/badHabits/catalog";
 import type {
   AnswerValue,
   AnswersByQuestion,
@@ -701,6 +707,15 @@ function Step3({
   );
 }
 
+/**
+ * Catalog source per group kind:
+ *  - "support":  good-habit library, grouped by category.
+ *  - "sabotage": the top-16 bad habits (matches onboarding's default grid).
+ */
+function catalogForKind(kind: "support" | "sabotage"): ReadonlyArray<MasterHabit> {
+  return kind === "support" ? GOOD_HABITS : DEFAULT_BAD_HABITS;
+}
+
 function HabitGroup({
   title,
   kind,
@@ -715,6 +730,18 @@ function HabitGroup({
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState("");
 
+  const catalog = catalogForKind(kind);
+  const selectedCatalogIds = new Set(
+    habits.map((h) => h.habitId).filter((x): x is string => Boolean(x)),
+  );
+  const availableCatalog = catalog.filter(
+    (c) => !selectedCatalogIds.has(c.id),
+  );
+
+  function addFromCatalog(item: MasterHabit) {
+    onChange([...habits, { name: item.name, habitId: item.id }]);
+  }
+
   function addCustom() {
     const v = draft.trim();
     if (v.length === 0 || v.length > 40) return;
@@ -727,6 +754,16 @@ function HabitGroup({
     onChange(habits.filter((_, idx) => idx !== i));
   }
 
+  // Good habits grouped by category for the support picker; sabotage uses a
+  // single flat list since DEFAULT_BAD_HABITS is brand-prioritized order.
+  const supportByCategory =
+    kind === "support"
+      ? GOOD_HABIT_CATEGORIES.map((cat) => ({
+          ...cat,
+          items: availableCatalog.filter((h) => h.category === cat.id),
+        })).filter((c) => c.items.length > 0)
+      : null;
+
   return (
     <section className="flex flex-col gap-2">
       <h3
@@ -737,32 +774,79 @@ function HabitGroup({
       >
         {title}
       </h3>
-      <div className="flex flex-wrap gap-2">
-        {habits.map((h, i) => (
-          <span
-            key={`${h.name}-${i}`}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5",
-              "text-xs font-medium",
-              kind === "support"
-                ? "border border-success/30 bg-success/10 text-success"
-                : "border border-warning/30 bg-warning/10 text-warning",
-            )}
-          >
-            {h.name}
-            <button
-              type="button"
-              onClick={() => removeAt(i)}
-              aria-label={`Verwijder ${h.name}`}
-              className="opacity-70 hover:opacity-100"
+
+      {/* Selected (template-prefilled or user-added) habits */}
+      {habits.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {habits.map((h, i) => (
+            <span
+              key={`${h.name}-${i}`}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5",
+                "text-xs font-medium",
+                kind === "support"
+                  ? "border border-success/30 bg-success/10 text-success"
+                  : "border border-warning/30 bg-warning/10 text-warning",
+              )}
             >
-              ×
-            </button>
+              {h.name}
+              <button
+                type="button"
+                onClick={() => removeAt(i)}
+                aria-label={`Verwijder ${h.name}`}
+                className="opacity-70 hover:opacity-100"
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Catalog picker — only shows items not yet selected */}
+      {availableCatalog.length > 0 && (
+        <div className="flex flex-col gap-1.5 pt-1">
+          <span className="px-1 text-[10px] font-medium uppercase tracking-[0.18em] text-muted">
+            Uit catalogus
           </span>
-        ))}
-      </div>
+          {supportByCategory ? (
+            <div className="flex flex-col gap-1.5">
+              {supportByCategory.map((cat) => (
+                <div key={cat.id} className="flex flex-col gap-1">
+                  <span className="px-1 text-[10px] font-medium text-foreground/55">
+                    {cat.label}
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {cat.items.map((h) => (
+                      <CatalogChip
+                        key={h.id}
+                        label={h.name}
+                        tone="support"
+                        onClick={() => addFromCatalog(h)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {availableCatalog.map((h) => (
+                <CatalogChip
+                  key={h.id}
+                  label={h.name}
+                  tone="sabotage"
+                  onClick={() => addFromCatalog(h)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Custom text fallback */}
       {adding ? (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 pt-1">
           <input
             type="text"
             value={draft}
@@ -784,12 +868,52 @@ function HabitGroup({
         <button
           type="button"
           onClick={() => setAdding(true)}
-          className="self-start text-[11px] font-medium text-muted underline-offset-4 hover:text-foreground hover:underline"
+          className="self-start pt-1 text-[11px] font-medium text-muted underline-offset-4 hover:text-foreground hover:underline"
         >
-          + Habit toevoegen
+          + Andere toevoegen
         </button>
       )}
     </section>
+  );
+}
+
+function CatalogChip({
+  label,
+  tone,
+  onClick,
+}: {
+  label: string;
+  tone: "support" | "sabotage";
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={`Voeg ${label} toe`}
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full border px-2.5 py-1",
+        "text-[11px] font-medium",
+        "transition-all duration-150 active:scale-[0.97]",
+        "focus-visible:outline-none focus-visible:ring-2",
+        tone === "support"
+          ? [
+              "border-success/25 bg-success/5 text-success/85",
+              "hover:border-success/50 hover:bg-success/10 hover:text-success",
+              "focus-visible:ring-success/60",
+            ]
+          : [
+              "border-warning/25 bg-warning/5 text-warning/85",
+              "hover:border-warning/50 hover:bg-warning/10 hover:text-warning",
+              "focus-visible:ring-warning/60",
+            ],
+      )}
+    >
+      <span aria-hidden className="text-[13px] leading-none">
+        +
+      </span>
+      {label}
+    </button>
   );
 }
 

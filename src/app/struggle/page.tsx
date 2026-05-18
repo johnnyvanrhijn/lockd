@@ -29,9 +29,12 @@ import {
   TRIGGER_OPTIONS,
   WALKING_BEATS,
   beatForElapsed,
+  buildAntidoteIntervention,
   getIntervention,
+  type Intervention,
   type InterventionId,
 } from "@/lib/struggle/copy";
+import { getAntidotes } from "@/lib/badHabits/catalog";
 import { cn } from "@/lib/utils/cn";
 
 const INITIAL_STATE: StruggleFlowState = {
@@ -271,6 +274,7 @@ function StruggleFlowInner() {
         {state.step === "intervention" && (
           <StepIntervention
             selected={state.selectedIntervention}
+            habitId={state.habitId}
             onPick={(id) =>
               setState((s) => ({ ...s, selectedIntervention: id }))
             }
@@ -284,7 +288,7 @@ function StruggleFlowInner() {
                 return;
               }
               if (iv.durationSeconds === 0) {
-                // Eigen keuze: no timer; manual completion.
+                // No timer; manual completion (eigen keuze + slow antidotes).
                 void persist("timer", {
                   selectedIntervention: iv.id,
                 });
@@ -697,15 +701,31 @@ function IdentityRow({ label, value }: { label: string; value: string }) {
 
 function StepIntervention({
   selected,
+  habitId,
   onPick,
   onStart,
   onClose,
 }: {
   selected: InterventionId | null;
+  habitId: string | null;
   onPick: (id: InterventionId) => void;
   onStart: () => void;
   onClose: () => void;
 }) {
+  // Build up to 3 antidote interventions from the triggering bad habit's
+  // catalog suggestions. When no habit is known, the section is suppressed.
+  const antidotes: Intervention[] = habitId
+    ? getAntidotes(habitId)
+        .slice(0, 3)
+        .map((h) =>
+          buildAntidoteIntervention({
+            id: h.id,
+            name: h.name,
+            dailyStatement: h.dailyStatement,
+          }),
+        )
+    : [];
+
   return (
     <StruggleShell
       eyebrow="Stap 5"
@@ -721,18 +741,50 @@ function StepIntervention({
       </h1>
       <p className="text-sm text-muted">Kies iets kleins. Vrijblijvend, maar bewust.</p>
 
-      <div className="flex w-full flex-col gap-2 pt-1">
-        {INTERVENTIONS.map((iv) => (
-          <StruggleOptionCard
-            key={iv.id}
-            title={iv.title}
-            description={iv.description}
-            meta={iv.durationSeconds > 0 ? `${iv.durationSeconds}s` : undefined}
-            selected={selected === iv.id}
-            onSelect={() => onPick(iv.id)}
-          />
-        ))}
-      </div>
+      {antidotes.length > 0 && (
+        <section className="flex w-full flex-col gap-2 pt-2">
+          <h2 className="px-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-success">
+            Antidote — doe dit in plaats
+          </h2>
+          <div className="flex w-full flex-col gap-2">
+            {antidotes.map((iv) => (
+              <StruggleOptionCard
+                key={iv.id}
+                title={iv.title}
+                description={iv.description}
+                meta={
+                  iv.durationSeconds > 0 ? `${iv.durationSeconds}s` : "vrij"
+                }
+                selected={selected === iv.id}
+                onSelect={() => onPick(iv.id)}
+                tone="antidote"
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      <section className="flex w-full flex-col gap-2 pt-2">
+        {antidotes.length > 0 && (
+          <h2 className="px-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-muted">
+            Of een algemene onderbreker
+          </h2>
+        )}
+        <div className="flex w-full flex-col gap-2">
+          {INTERVENTIONS.map((iv) => (
+            <StruggleOptionCard
+              key={iv.id}
+              title={iv.title}
+              description={iv.description}
+              meta={
+                iv.durationSeconds > 0 ? `${iv.durationSeconds}s` : undefined
+              }
+              selected={selected === iv.id}
+              onSelect={() => onPick(iv.id)}
+            />
+          ))}
+        </div>
+      </section>
     </StruggleShell>
   );
 }
