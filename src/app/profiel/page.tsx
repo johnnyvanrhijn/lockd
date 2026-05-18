@@ -7,6 +7,7 @@ import { BottomNav } from "@/components/navigation/BottomNav";
 import { NAV_ITEMS, NAV_ROUTES } from "@/components/navigation/navItems";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { IconButton } from "@/components/ui/IconButton";
+import { ZoneHeader } from "@/components/ui/ZoneHeader";
 import { LoadingSkeleton } from "@/components/ui/LoadingSkeleton";
 import { SummarySection } from "@/components/onboarding/SummarySection";
 import { getSupabaseClient } from "@/lib/supabase/client";
@@ -71,17 +72,6 @@ function CheckIcon() {
   );
 }
 
-// Tier-A zone divider: thin top border + extra letter-spacing + muted color so
-// the major structural breaks read distinctly from per-section group labels.
-function ZoneHeader({ label }: { label: string }) {
-  return (
-    <div className="-mx-1 border-t border-[var(--color-border)] px-1 pt-3">
-      <span className="text-[10px] font-semibold uppercase tracking-[0.32em] text-muted/70">
-        {label}
-      </span>
-    </div>
-  );
-}
 
 
 type Profile = {

@@ -3,12 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
-import { GlassCard } from "@/components/ui/GlassCard";
 import { LoadingSkeleton } from "@/components/ui/LoadingSkeleton";
 import { BottomNav } from "@/components/navigation/BottomNav";
 import { NAV_ITEMS, NAV_ROUTES } from "@/components/navigation/navItems";
+import { ZoneHeader } from "@/components/ui/ZoneHeader";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { getActiveLogDate, subDays } from "@/lib/badHabits/clientDate";
+import { getBadHabitName } from "@/lib/badHabits/catalog";
 import {
   aggregateImpact,
   type AggregatedImpact,
@@ -21,15 +22,32 @@ import { generateInsights, type Insight } from "@/lib/insights/engine";
 import { InsightsBlock } from "@/components/dashboard/InsightsBlock";
 import { ProofRail } from "@/components/dashboard/ProofRail";
 import { MOOD_OPTIONS, type MoodId } from "@/lib/mood/options";
-import { cn } from "@/lib/utils/cn";
-
-type MoodDistribution = Array<{ mood: MoodId; count: number; pct: number }>;
+import {
+  getStrugglePattern,
+  type StrugglePattern,
+} from "@/lib/struggle/client";
+import { RecordsHero } from "@/components/inzicht/RecordsHero";
+import { StrugglePatternCard } from "@/components/inzicht/StrugglePatternCard";
+import {
+  HabitBreakdownList,
+  type PerHabitRow,
+  type DailyStatus,
+} from "@/components/inzicht/HabitBreakdownList";
+import {
+  MoodDistributionCard,
+  type MoodDistribution,
+} from "@/components/inzicht/MoodDistributionCard";
 
 type InzichtData = {
   insights: Insight[];
   impact: AggregatedImpact;
   moodDistribution: MoodDistribution;
   moodDaysCounted: number;
+  lockdStreak: number;
+  bestStreak: number;
+  daysTracked: number;
+  strugglePattern: StrugglePattern | null;
+  perHabit: PerHabitRow[];
 };
 
 export default function InzichtPage() {
@@ -54,10 +72,13 @@ export default function InzichtPage() {
       const [
         habitsRes,
         answersRes,
-        failsRes,
+        logsRes,
         weekHistoryRes,
         activeGoalRes,
         moodPatternRes,
+        lockdRes,
+        individualStreaksRes,
+        strugglePattern,
       ] = await Promise.all([
         supabase
           .from("user_bad_habits")
@@ -72,7 +93,6 @@ export default function InzichtPage() {
           .from("habit_logs")
           .select("habit_id, log_date, status, created_at")
           .eq("user_id", userId)
-          .eq("status", "fail")
           .gte("log_date", since30),
         supabase.rpc("get_consistency_history", {
           p_from: since7,
@@ -80,6 +100,9 @@ export default function InzichtPage() {
         }),
         supabase.rpc("get_active_goal"),
         supabase.rpc("get_mood_pattern", { p_days: 30 }),
+        supabase.rpc("get_lockd_streak", { p_today: logDate }),
+        supabase.rpc("get_individual_streaks", { p_today: logDate }),
+        getStrugglePattern().catch(() => null),
       ]);
       if (cancelled) return;
 
@@ -91,7 +114,8 @@ export default function InzichtPage() {
         answersByHabit[h][row.question_id] = row.answer as AnswerValue;
       }
 
-      const allFails = failsRes.data ?? [];
+      const allLogs = logsRes.data ?? [];
+      const allFails = allLogs.filter((l) => l.status === "fail");
       const failsByHabit: Record<string, number> = {};
       for (const f of allFails) {
         failsByHabit[f.habit_id] = (failsByHabit[f.habit_id] ?? 0) + 1;
@@ -157,6 +181,10 @@ export default function InzichtPage() {
               }),
             );
 
+      // Hero "days tracked" is inclusive of day-of-add (mirrors the impact
+      // calc's +1) so day 1 reads as "1d".
+      const daysTracked = habits.length === 0 ? 0 : daysOfData + 1;
+
       const risk = assessRisk({
         triggersByHabit,
         recentFails,
@@ -202,6 +230,57 @@ export default function InzichtPage() {
         .filter((row) => row.count > 0)
         .sort((a, b) => b.count - a.count);
 
+      // Per-habit 30-day status strips + clean-days + fails-this-month.
+      const logsByKey = new Map<string, "success" | "fail">();
+      for (const l of allLogs) {
+        if (l.status === "success" || l.status === "fail") {
+          logsByKey.set(`${l.habit_id}|${l.log_date}`, l.status);
+        }
+      }
+      const dates30: string[] = [];
+      for (let i = 29; i >= 0; i--) dates30.push(subDays(logDate, i));
+
+      const streakByHabit = new Map<string, number>();
+      type StreakRow = { habit_id: string; current_streak: number | null };
+      for (const row of (individualStreaksRes.data ?? []) as StreakRow[]) {
+        streakByHabit.set(row.habit_id, row.current_streak ?? 0);
+      }
+
+      const perHabit: PerHabitRow[] = habits.map((h) => {
+        const dailyStatus: DailyStatus[] = dates30.map(
+          (d) => logsByKey.get(`${h.habit_id}|${d}`) ?? "none",
+        );
+        const added = new Date(h.created_at);
+        const daysSinceAdded = Math.max(
+          0,
+          Math.floor((nowDate.getTime() - added.getTime()) / 86400000) + 1,
+        );
+        const habitFails = allFails.filter((f) => f.habit_id === h.habit_id);
+        const lastFailDate =
+          habitFails.length === 0
+            ? null
+            : habitFails
+                .map((f) => f.log_date)
+                .sort()
+                .reverse()[0];
+        const daysClean = lastFailDate
+          ? Math.floor(
+              (nowDate.getTime() - new Date(lastFailDate).getTime()) /
+                86400000,
+            )
+          : daysSinceAdded;
+        return {
+          habitId: h.habit_id,
+          name: getBadHabitName(h.habit_id),
+          streak: streakByHabit.get(h.habit_id) ?? 0,
+          daysClean,
+          failsThisMonth: habitFails.length,
+          dailyStatus,
+        };
+      });
+
+      const lockdRow = lockdRes.data?.[0] ?? null;
+
       const insights = generateInsights({
         risk,
         riskSentence: describeWindow(risk),
@@ -215,6 +294,8 @@ export default function InzichtPage() {
         recentFailDates: allFails.map((f) => f.log_date),
         activeMission,
         activeHabitsCount: habits.length,
+        // Intentionally NOT passing strugglePattern — the dedicated
+        // StrugglePatternCard owns all struggle messaging on this page.
       });
 
       setData({
@@ -222,6 +303,11 @@ export default function InzichtPage() {
         impact,
         moodDistribution,
         moodDaysCounted: moodDaySet.size,
+        lockdStreak: lockdRow?.current_streak ?? 0,
+        bestStreak: lockdRow?.best_streak ?? 0,
+        daysTracked,
+        strugglePattern,
+        perHabit,
       });
       setLoaded(true);
     })();
@@ -235,7 +321,7 @@ export default function InzichtPage() {
       header={
         <header className="flex items-center justify-between gap-3 pt-1">
           <div className="flex min-w-0 flex-col gap-1">
-            <h1 className="text-2xl font-semibold leading-tight tracking-tight text-foreground">
+            <h1 className="text-3xl font-semibold leading-tight tracking-tight text-foreground">
               Inzicht
             </h1>
             <p className="text-sm text-muted">
@@ -257,107 +343,56 @@ export default function InzichtPage() {
     >
       {!loaded || !data ? (
         <div className="flex flex-col gap-4 pt-2">
+          <LoadingSkeleton height="h-40" />
           <LoadingSkeleton height="h-32" />
           <LoadingSkeleton height="h-48" />
-          <LoadingSkeleton height="h-32" />
         </div>
       ) : (
-        <div className="flex flex-col gap-5">
-          {data.insights.length === 0 ? (
-            <GlassCard padding="md">
-              <p className="text-sm text-muted">
-                Inzichten verschijnen hier zodra je een aantal dagen logt en
-                een check-in doet.
-              </p>
-            </GlassCard>
-          ) : (
-            <InsightsBlock insights={data.insights} />
-          )}
+        <div className="flex flex-col gap-8">
+          {/* Zone: RECORDS */}
+          <section className="flex flex-col gap-3">
+            <ZoneHeader label="Records" />
+            <RecordsHero
+              currentStreak={data.lockdStreak}
+              bestStreak={data.bestStreak}
+              daysTracked={data.daysTracked}
+            />
+          </section>
 
-          <ProofRail
-            impact={data.impact}
-            onOpenHistory={() => router.push("/geschiedenis")}
-          />
+          {/* Zone: WAT JE TERUGWINT */}
+          <section className="flex flex-col gap-3">
+            <ZoneHeader label="Wat je terugwint" />
+            <ProofRail
+              impact={data.impact}
+              onOpenHistory={() => router.push("/geschiedenis")}
+            />
+          </section>
 
-          <MoodDistributionSection
-            distribution={data.moodDistribution}
-            daysCounted={data.moodDaysCounted}
-          />
+          {/* Zone: PATRONEN */}
+          <section className="flex flex-col gap-3">
+            <ZoneHeader label="Patronen" />
+            <StrugglePatternCard pattern={data.strugglePattern} />
+            {data.insights.length > 0 && (
+              <InsightsBlock insights={data.insights} />
+            )}
+          </section>
+
+          {/* Zone: PER GEWOONTE */}
+          <section className="flex flex-col gap-3">
+            <ZoneHeader label="Per gewoonte" />
+            <HabitBreakdownList items={data.perHabit} />
+          </section>
+
+          {/* Zone: STEMMING */}
+          <section className="flex flex-col gap-3">
+            <ZoneHeader label="Stemming" />
+            <MoodDistributionCard
+              distribution={data.moodDistribution}
+              daysCounted={data.moodDaysCounted}
+            />
+          </section>
         </div>
       )}
     </AppShell>
-  );
-}
-
-function MoodDistributionSection({
-  distribution,
-  daysCounted,
-}: {
-  distribution: MoodDistribution;
-  daysCounted: number;
-}) {
-  if (distribution.length === 0) {
-    return (
-      <section className="flex flex-col gap-3">
-        <div className="flex items-center justify-between px-1">
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.25em] text-purple-bright">
-            Jouw stemming (30d)
-          </h2>
-        </div>
-        <GlassCard padding="md">
-          <p className="text-sm text-muted">
-            Begin met dagelijkse check-ins op het dashboard om je stemming-
-            patroon te zien.
-          </p>
-        </GlassCard>
-      </section>
-    );
-  }
-
-  return (
-    <section className="flex flex-col gap-3">
-      <div className="flex items-center justify-between px-1">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.25em] text-purple-bright">
-          Jouw stemming (30d)
-        </h2>
-        <span className="text-[11px] text-muted">{daysCounted}d gemeten</span>
-      </div>
-      <GlassCard padding="md">
-        <div className="flex flex-col gap-3">
-          {distribution.map((row) => {
-            const opt = MOOD_OPTIONS.find((m) => m.id === row.mood);
-            if (!opt) return null;
-            return (
-              <div key={row.mood} className="flex items-center gap-3">
-                <span aria-hidden className="text-xl">
-                  {opt.emoji}
-                </span>
-                <div className="flex flex-1 flex-col gap-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-foreground">
-                      {opt.label}
-                    </span>
-                    <span className="text-[11px] tabular-nums text-muted">
-                      {row.pct}%
-                    </span>
-                  </div>
-                  <div
-                    className={cn(
-                      "h-1.5 w-full overflow-hidden rounded-full",
-                      "bg-surface-elevated",
-                    )}
-                  >
-                    <div
-                      className="h-full rounded-full bg-purple-bright/70"
-                      style={{ width: `${row.pct}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </GlassCard>
-    </section>
   );
 }
