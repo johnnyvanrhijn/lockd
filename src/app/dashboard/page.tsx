@@ -563,52 +563,12 @@ export default function DashboardPage() {
             <PrimaryInterventionCTA />
           </div>
 
-          <section className="flex flex-col gap-3">
-            <SectionHeader
-              title="Wat je vandaag beschermt"
-              action={
-                <button
-                  type="button"
-                  onClick={() => router.push("/profiel")}
-                  aria-label="Bewerk je gewoontes"
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full px-3",
-                    "min-h-[44px] text-xs font-medium text-muted",
-                    "transition-colors duration-150 hover:text-foreground",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-bright/70",
-                  )}
-                >
-                  Bewerk
-                  <PencilIcon />
-                </button>
-              }
-            />
-            {data.habits.length === 0 ? (
-              <GlassCard tone="elevated" padding="md">
-                <p className="text-sm text-muted">
-                  Nog geen gewoontes geselecteerd. Open je profiel om er een
-                  toe te voegen.
-                </p>
-              </GlassCard>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {data.habits.map((h, i) => (
-                  <HabitCommitmentCard
-                    key={h.habit_id}
-                    name={h.name}
-                    dailyStatement={h.dailyStatement}
-                    habitType={h.habitType}
-                    streakDays={h.streak}
-                    status={h.status}
-                    variant={i < FULL_CARD_LIMIT ? "full" : "compact"}
-                    disabled={savingHabit === h.habit_id}
-                    onSuccess={() => handleAction(h.habit_id, "success")}
-                    onFail={() => handleAction(h.habit_id, "fail")}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
+          <HabitSections
+            habits={data.habits}
+            savingHabit={savingHabit}
+            onEdit={() => router.push("/profiel")}
+            onAction={handleAction}
+          />
 
           <EmotionalCheckIn
             key={data.todayMood?.id ?? "fresh"}
@@ -642,6 +602,126 @@ export default function DashboardPage() {
         </div>
       )}
     </AppShell>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Habit sections (bad + good)                                               */
+/* -------------------------------------------------------------------------- */
+
+function HabitSections({
+  habits,
+  savingHabit,
+  onEdit,
+  onAction,
+}: {
+  habits: ActiveHabit[];
+  savingHabit: string | null;
+  onEdit: () => void;
+  onAction: (habitId: string, next: "success" | "fail") => void;
+}) {
+  const badHabits = habits.filter((h) => h.habitType === "bad");
+  const goodHabits = habits.filter((h) => h.habitType === "good");
+
+  return (
+    <>
+      <section className="flex flex-col gap-3">
+        <SectionHeader
+          title="Niet doen vandaag"
+          action={
+            <EditButton onClick={onEdit} label="Bewerk je niet-doen gewoontes" />
+          }
+        />
+        {badHabits.length === 0 ? (
+          <GlassCard tone="elevated" padding="md">
+            <p className="text-sm text-muted">
+              Nog geen gewoontes geselecteerd. Open je profiel om er een toe
+              te voegen.
+            </p>
+          </GlassCard>
+        ) : (
+          <HabitLane
+            habits={badHabits}
+            savingHabit={savingHabit}
+            onAction={onAction}
+          />
+        )}
+      </section>
+
+      {goodHabits.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <SectionHeader
+            title="Wel doen vandaag"
+            tone="success"
+            action={
+              <EditButton
+                onClick={onEdit}
+                label="Bewerk je wel-doen gewoontes"
+              />
+            }
+          />
+          <HabitLane
+            habits={goodHabits}
+            savingHabit={savingHabit}
+            onAction={onAction}
+          />
+        </section>
+      )}
+    </>
+  );
+}
+
+function HabitLane({
+  habits,
+  savingHabit,
+  onAction,
+}: {
+  habits: ActiveHabit[];
+  savingHabit: string | null;
+  onAction: (habitId: string, next: "success" | "fail") => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      {habits.map((h, i) => (
+        <HabitCommitmentCard
+          key={h.habit_id}
+          name={h.name}
+          dailyStatement={h.dailyStatement}
+          habitType={h.habitType}
+          streakDays={h.streak}
+          status={h.status}
+          variant={i < FULL_CARD_LIMIT ? "full" : "compact"}
+          disabled={savingHabit === h.habit_id}
+          onSuccess={() => onAction(h.habit_id, "success")}
+          onFail={() => onAction(h.habit_id, "fail")}
+        />
+      ))}
+    </div>
+  );
+}
+
+function EditButton({
+  onClick,
+  label,
+}: {
+  onClick: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full px-3",
+        "min-h-[44px] text-xs font-medium text-muted",
+        "transition-colors duration-150 hover:text-foreground",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-bright/70",
+      )}
+    >
+      Bewerk
+      <PencilIcon />
+    </button>
   );
 }
 
@@ -688,13 +768,20 @@ function GreetingHeader({
 function SectionHeader({
   title,
   action,
+  tone = "purple",
 }: {
   title: string;
   action?: ReactNode;
+  tone?: "purple" | "success";
 }) {
   return (
     <div className="flex items-center justify-between px-1">
-      <h2 className="text-[11px] font-semibold uppercase tracking-[0.25em] text-purple-bright">
+      <h2
+        className={cn(
+          "text-[11px] font-semibold uppercase tracking-[0.25em]",
+          tone === "success" ? "text-success" : "text-purple-bright",
+        )}
+      >
         {title}
       </h2>
       {action}

@@ -10,7 +10,7 @@ export async function logMood(
   const { data, error } = await supabase.rpc("log_mood", {
     p_mood: moodId,
     p_log_date: logDate,
-    p_note: note ?? null,
+    p_note: note ?? undefined,
   });
   if (error) throw error;
   if (!data) throw new Error("log_mood returned no id");

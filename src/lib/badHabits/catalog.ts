@@ -121,6 +121,22 @@ export const DEFAULT_BAD_HABITS = BAD_HABITS.filter((h) => h.isDefault);
 export const EXTRA_BAD_HABITS = BAD_HABITS.filter((h) => !h.isDefault);
 
 export const MAX_BAD_HABITS = 5;
+export const MAX_GOOD_HABITS = 3;
+
+/**
+ * Categories used to group good habits in the onboarding/profile sheets.
+ * Ordered for display.
+ */
+export const GOOD_HABIT_CATEGORIES: ReadonlyArray<{
+  id: string;
+  label: string;
+}> = [
+  { id: "beweging",   label: "Beweging" },
+  { id: "mind",       label: "Mind" },
+  { id: "lichaam",    label: "Lichaam" },
+  { id: "sociaal",    label: "Sociaal" },
+  { id: "discipline", label: "Discipline" },
+];
 
 const BY_ID: Record<string, MasterHabit> = Object.fromEntries(
   MASTER_HABITS.map((h) => [h.id, h]),
@@ -139,6 +155,11 @@ export function getBadHabit(id: string): MasterHabit | undefined {
   return h && h.type === "bad" ? h : undefined;
 }
 
+export function getGoodHabit(id: string): MasterHabit | undefined {
+  const h = BY_ID[id];
+  return h && h.type === "good" ? h : undefined;
+}
+
 export function getBadHabitName(id: string): string {
   return BY_ID[id]?.name ?? id;
 }
@@ -154,6 +175,44 @@ export function getHabitType(id: string): HabitType | undefined {
 export function getAntidotes(id: string): MasterHabit[] {
   const ids = BY_ID[id]?.antidoteIds ?? [];
   return ids.map((aid) => BY_ID[aid]).filter((h): h is MasterHabit => Boolean(h));
+}
+
+/**
+ * Aggregate antidote suggestions across a set of bad-habit IDs.
+ *
+ * Counts how often each antidote appears across the chosen bad habits, then
+ * returns unique good habits in descending vote order (stable for same vote
+ * counts, falling back to catalog sort order via the `MASTER_HABITS` array).
+ *
+ * Example: a user who picked Roken + Porno + Alcohol gets `walking` and
+ * `pushups` near the top because all three list them. Returns at most
+ * `limit` habits (default 6 — enough to populate suggestions plus a few
+ * alternates).
+ */
+export function getAntidotesForHabits(
+  badHabitIds: ReadonlyArray<string>,
+  limit = 6,
+): MasterHabit[] {
+  const votes = new Map<string, number>();
+  for (const badId of badHabitIds) {
+    const ids = BY_ID[badId]?.antidoteIds ?? [];
+    for (const aid of ids) {
+      votes.set(aid, (votes.get(aid) ?? 0) + 1);
+    }
+  }
+  // Stable sort: vote desc, then preserve catalog order via MASTER_HABITS.
+  const indexOf = new Map(MASTER_HABITS.map((h, i) => [h.id, i]));
+  const ranked = [...votes.entries()]
+    .map(([id, count]) => ({
+      id,
+      count,
+      idx: indexOf.get(id) ?? Number.MAX_SAFE_INTEGER,
+    }))
+    .sort((a, b) => b.count - a.count || a.idx - b.idx)
+    .slice(0, limit);
+  return ranked
+    .map(({ id }) => BY_ID[id])
+    .filter((h): h is MasterHabit => Boolean(h));
 }
 
 /** True when `id` references a habit that lives in the current catalog. */

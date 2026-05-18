@@ -10,10 +10,10 @@ export async function startStruggleSession(args: {
 }): Promise<string> {
   const supabase = getSupabaseClient();
   const { data, error } = await supabase.rpc("start_struggle_session", {
-    p_habit_id: args.habitId ?? null,
-    p_goal_id: args.goalId ?? null,
-    p_protected_habit_name: args.protectedHabitName ?? null,
-    p_protected_goal_title: args.protectedGoalTitle ?? null,
+    p_habit_id: args.habitId ?? undefined,
+    p_goal_id: args.goalId ?? undefined,
+    p_protected_habit_name: args.protectedHabitName ?? undefined,
+    p_protected_goal_title: args.protectedGoalTitle ?? undefined,
   });
   if (error) throw error;
   if (!data) throw new Error("start_struggle_session returned no id");

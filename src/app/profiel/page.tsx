@@ -21,6 +21,7 @@ import {
 } from "@/lib/onboarding/options";
 import { HabitAssumptionsSheet } from "@/components/badHabits/HabitAssumptionsSheet";
 import { HabitManagerSheet } from "@/components/badHabits/HabitManagerSheet";
+import { GoodHabitManagerSheet } from "@/components/badHabits/GoodHabitManagerSheet";
 import {
   OptionListEditSheet,
   type OptionEntry,
@@ -30,7 +31,7 @@ import {
   type ToneId,
 } from "@/components/profile/SupportEditSheet";
 import { RiskMomentsEditSheet } from "@/components/profile/RiskMomentsEditSheet";
-import { getBadHabitName } from "@/lib/badHabits/catalog";
+import { getBadHabitName, getHabitType } from "@/lib/badHabits/catalog";
 import {
   type AnswerValue,
   type AnswersByQuestion,
@@ -122,11 +123,15 @@ export default function ProfilePage() {
   const [habitAnswers, setHabitAnswers] = useState<
     Record<string, AnswersByQuestion>
   >({});
-  const [activeHabits, setActiveHabits] = useState<string[]>([]);
+  /** Active bad-habit IDs (type='bad' in master). */
+  const [activeBadHabits, setActiveBadHabits] = useState<string[]>([]);
+  /** Active good-habit IDs (type='good' in master). */
+  const [activeGoodHabits, setActiveGoodHabits] = useState<string[]>([]);
   /** When set, the assumption-edit sheet is open for this habit. */
   const [editingHabit, setEditingHabit] = useState<string | null>(null);
   const [savingHabit, setSavingHabit] = useState(false);
   const [managerOpen, setManagerOpen] = useState(false);
+  const [goodManagerOpen, setGoodManagerOpen] = useState(false);
   const [savingManager, setSavingManager] = useState(false);
 
   /** Which onboarding section is currently being edited inline. */
@@ -177,7 +182,11 @@ export default function ProfilePage() {
       if (cancelled) return;
       setProfile(profileRes.data);
       setResponses(responsesRes.data);
-      setActiveHabits((habitsRes.data ?? []).map((h) => h.habit_id));
+      const allActiveIds = (habitsRes.data ?? []).map((h) => h.habit_id);
+      setActiveBadHabits(allActiveIds.filter((id) => getHabitType(id) === "bad"));
+      setActiveGoodHabits(
+        allActiveIds.filter((id) => getHabitType(id) === "good"),
+      );
       const grouped: Record<string, AnswersByQuestion> = {};
       for (const row of answersRes.data ?? []) {
         const habit = row.habit_id;
@@ -260,21 +269,22 @@ export default function ProfilePage() {
     setEditingSection(null);
   }
 
-  async function saveHabitSelection(next: string[]) {
+  /**
+   * Atomic save of the user's bad-habit selection. The combined active set
+   * (new bad + existing good) is pushed to user_bad_habits via the RPC, and
+   * `focus_habits` is mirrored in onboarding_responses for legacy reads.
+   */
+  async function saveBadHabitSelection(nextBad: string[]) {
     setSavingManager(true);
     const supabase = getSupabaseClient();
+    const combined = [...nextBad, ...activeGoodHabits];
+    const userId = (await supabase.auth.getUser()).data.user?.id ?? "";
     const [syncRes, responsesRes] = await Promise.all([
-      supabase.rpc("sync_user_bad_habits", { p_habit_ids: next }),
-      // Keep the legacy focus_habits array in lock-step so the summary cards
-      // and any older code paths that read from onboarding_responses stay
-      // accurate.
+      supabase.rpc("sync_user_bad_habits", { p_habit_ids: combined }),
       supabase
         .from("onboarding_responses")
-        .update({ focus_habits: next })
-        .eq(
-          "user_id",
-          (await supabase.auth.getUser()).data.user?.id ?? "",
-        ),
+        .update({ focus_habits: nextBad })
+        .eq("user_id", userId),
     ]);
     setSavingManager(false);
     if (syncRes.error) {
@@ -287,11 +297,44 @@ export default function ProfilePage() {
         responsesRes.error,
       );
     }
-    setActiveHabits(next);
-    setResponses((prev) =>
-      prev ? { ...prev, focus_habits: next } : prev,
-    );
+    setActiveBadHabits(nextBad);
+    setResponses((prev) => (prev ? { ...prev, focus_habits: nextBad } : prev));
     setManagerOpen(false);
+  }
+
+  /**
+   * Mirror of saveBadHabitSelection but for the good-habit set. Keeps the
+   * bad-habit list intact and updates the onboarding mirror under
+   * `focus_good_habits`.
+   */
+  async function saveGoodHabitSelection(nextGood: string[]) {
+    setSavingManager(true);
+    const supabase = getSupabaseClient();
+    const combined = [...activeBadHabits, ...nextGood];
+    const userId = (await supabase.auth.getUser()).data.user?.id ?? "";
+    const [syncRes, responsesRes] = await Promise.all([
+      supabase.rpc("sync_user_bad_habits", { p_habit_ids: combined }),
+      supabase
+        .from("onboarding_responses")
+        .update({ focus_good_habits: nextGood })
+        .eq("user_id", userId),
+    ]);
+    setSavingManager(false);
+    if (syncRes.error) {
+      console.error(
+        "[profile] sync_user_bad_habits (good) failed:",
+        syncRes.error,
+      );
+      return;
+    }
+    if (responsesRes.error) {
+      console.warn(
+        "[profile] focus_good_habits mirror update failed:",
+        responsesRes.error,
+      );
+    }
+    setActiveGoodHabits(nextGood);
+    setGoodManagerOpen(false);
   }
 
   return (
@@ -480,7 +523,7 @@ export default function ProfilePage() {
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between px-1">
                 <h2 className="text-[11px] font-semibold uppercase tracking-[0.25em] text-purple-bright">
-                  Jouw gewoontes
+                  Niet doen — wat je weg wil
                 </h2>
                 <button
                   type="button"
@@ -494,7 +537,7 @@ export default function ProfilePage() {
                   Beheer →
                 </button>
               </div>
-              {activeHabits.length === 0 ? (
+              {activeBadHabits.length === 0 ? (
                 <GlassCard tone="elevated" padding="md">
                   <p className="text-sm text-muted">
                     Geen actieve gewoontes. Tap{" "}
@@ -505,13 +548,62 @@ export default function ProfilePage() {
               ) : (
                 <GlassCard padding="none">
                   <ul className="flex flex-col divide-y divide-[var(--color-border)] px-4">
-                    {activeHabits.map((habitId) => (
+                    {activeBadHabits.map((habitId) => (
                       <li key={habitId}>
                         <HabitAssumptionsRow
                           habitId={habitId}
                           answers={habitAnswers[habitId] ?? {}}
                           onEdit={() => setEditingHabit(habitId)}
                         />
+                      </li>
+                    ))}
+                  </ul>
+                </GlassCard>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between px-1">
+                <h2 className="text-[11px] font-semibold uppercase tracking-[0.25em] text-success">
+                  Wel doen — wat je opbouwt
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setGoodManagerOpen(true)}
+                  className={cn(
+                    "rounded-full px-2 py-0.5 text-[11px] font-medium",
+                    "text-muted hover:text-foreground transition-colors",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-success/60",
+                  )}
+                >
+                  Beheer →
+                </button>
+              </div>
+              {activeGoodHabits.length === 0 ? (
+                <GlassCard tone="elevated" padding="md">
+                  <p className="text-sm text-muted">
+                    Nog geen wel-doen gewoontes. Tap{" "}
+                    <span className="text-foreground">Beheer</span> om er tot 3
+                    te kiezen.
+                  </p>
+                </GlassCard>
+              ) : (
+                <GlassCard padding="none">
+                  <ul className="flex flex-col divide-y divide-[var(--color-border)] px-4">
+                    {activeGoodHabits.map((habitId) => (
+                      <li
+                        key={habitId}
+                        className="flex items-center justify-between gap-3 py-3"
+                      >
+                        <div className="flex min-w-0 flex-col gap-0.5">
+                          <span className="text-sm font-semibold text-foreground">
+                            {getBadHabitName(habitId)}
+                          </span>
+                          <span className="line-clamp-2 text-[11px] leading-relaxed text-muted">
+                            Wordt op je dashboard getoond onder &quot;Wel
+                            doen&quot;.
+                          </span>
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -595,10 +687,19 @@ export default function ProfilePage() {
 
       {managerOpen && (
         <HabitManagerSheet
-          initialSelected={activeHabits}
+          initialSelected={activeBadHabits}
           saving={savingManager}
           onClose={() => setManagerOpen(false)}
-          onSave={(next) => saveHabitSelection(next)}
+          onSave={(next) => saveBadHabitSelection(next)}
+        />
+      )}
+
+      {goodManagerOpen && (
+        <GoodHabitManagerSheet
+          initialSelected={activeGoodHabits}
+          saving={savingManager}
+          onClose={() => setGoodManagerOpen(false)}
+          onSave={(next) => saveGoodHabitSelection(next)}
         />
       )}
 

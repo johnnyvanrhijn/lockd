@@ -20,6 +20,7 @@ import { filterKnownHabits } from "@/lib/badHabits/catalog";
 
 import { StepSplash } from "./_components/StepSplash";
 import { StepFocus } from "./_components/StepFocus";
+import { StepGoodHabits } from "./_components/StepGoodHabits";
 import { StepHabitQuestions } from "./_components/StepHabitQuestions";
 import { StepWaarom } from "./_components/StepWaarom";
 import { StepRiskTimes } from "./_components/StepRiskTimes";
@@ -47,6 +48,8 @@ export type CirclePrivacy = {
 export type OnboardingState = {
   display_name: string;
   focus_habits: string[];
+  /** Good-habit IDs picked between Focus and habit-questions. ≤ 3. */
+  focus_good_habits: string[];
   desired_outcomes: string[];
   risk_times: string[];
   risk_situations: string[];
@@ -65,11 +68,14 @@ export type OnboardingState = {
 //   6 triggers · 7 tone · 8 what-helps · 9 active-intervention ·
 //   10 accountability · 11 summary/invite · 12 signals (buddies) ·
 //   13 summary (buddies)
-// After Focus we inject N habit-question steps where N = focus_habits.length;
-// legacy steps 3..N+ shift down by N actual URL positions.
+// Between Focus (legacy 2) and Waarom (legacy 3) we inject:
+//   actual 3                    : StepGoodHabits (one screen, always present)
+//   actual 4..3+habitCount      : StepHabitQuestions (one per focus_habit)
+// All legacy steps from 3 onward shift down by `habitCount + 1` actual slots.
 const LEGACY_TOTAL_SOLO = 11;
 const LEGACY_TOTAL_BUDDIES = 13;
-const FIRST_HABIT_STEP = 3; // actual step number of first habit-question screen
+const GOOD_HABITS_STEP = 3; // actual step number of the good-habits screen
+const FIRST_HABIT_STEP = 4; // actual step number of first habit-question screen
 
 function extractErrorMessage(err: unknown): string {
   if (!err) return "Onbekende fout. Probeer opnieuw.";
@@ -97,6 +103,7 @@ const DEFAULT_PRIVACY: CirclePrivacy = {
 const DEFAULT_STATE: OnboardingState = {
   display_name: "",
   focus_habits: [],
+  focus_good_habits: [],
   desired_outcomes: [],
   risk_times: [],
   risk_situations: [],
@@ -121,29 +128,44 @@ function OnboardingFlow() {
   const habitCount = state.focus_habits.length;
   const isBuddies = state.accountability_mode === "buddies";
   const legacyTotal = isBuddies ? LEGACY_TOTAL_BUDDIES : LEGACY_TOTAL_SOLO;
-  const totalSteps = legacyTotal + habitCount;
+  // +1 for the always-present GoodHabits screen between Focus and habits.
+  const totalSteps = legacyTotal + habitCount + 1;
 
   // URL step is clamped to total. Sequence:
   //   1: Splash
   //   2: Focus
-  //   3..2+habitCount: habit-question screens
-  //   3+habitCount..legacyTotal+habitCount: legacy steps shifted
+  //   3: GoodHabits
+  //   4..3+habitCount: habit-question screens
+  //   4+habitCount..legacyTotal+habitCount+1: legacy steps shifted
   const rawStep = Number(params.get("step") ?? "1");
   const requestedStep = Number.isFinite(rawStep)
     ? Math.max(1, Math.min(rawStep, totalSteps))
     : 1;
   const step = Math.min(requestedStep, totalSteps);
 
-  /** Convert an actual URL step number to its legacy equivalent (1..legacyTotal). */
+  /** Convert an actual URL step number to its position in the flow. */
   function actualToLegacy(actual: number): {
     legacy: number | null;
     habitIndex: number | null;
+    isGoodHabits: boolean;
   } {
-    if (actual <= 2) return { legacy: actual, habitIndex: null };
-    const habitEnd = 2 + habitCount;
+    if (actual <= 2)
+      return { legacy: actual, habitIndex: null, isGoodHabits: false };
+    if (actual === GOOD_HABITS_STEP)
+      return { legacy: null, habitIndex: null, isGoodHabits: true };
+    const habitEnd = GOOD_HABITS_STEP + habitCount;
     if (actual <= habitEnd)
-      return { legacy: null, habitIndex: actual - FIRST_HABIT_STEP };
-    return { legacy: actual - habitCount, habitIndex: null };
+      return {
+        legacy: null,
+        habitIndex: actual - FIRST_HABIT_STEP,
+        isGoodHabits: false,
+      };
+    // Legacy 3+ shifted down by (habitCount + 1).
+    return {
+      legacy: actual - habitCount - 1,
+      habitIndex: null,
+      isGoodHabits: false,
+    };
   }
 
   const goToActualStep = useCallback(
@@ -161,7 +183,9 @@ function OnboardingFlow() {
         goToActualStep(legacy);
         return;
       }
-      goToActualStep(legacy + habitCount);
+      // Legacy 3+ shifted up by (habitCount + 1) to account for the
+      // GoodHabits screen + habit-question screens.
+      goToActualStep(legacy + habitCount + 1);
     },
     [goToActualStep, habitCount],
   );
@@ -231,6 +255,10 @@ function OnboardingFlow() {
       setState({
         display_name: profile?.display_name ?? "",
         focus_habits: filterKnownHabits(responses?.focus_habits ?? []),
+        focus_good_habits: filterKnownHabits(
+          (responses as { focus_good_habits?: string[] } | null)
+            ?.focus_good_habits ?? [],
+        ),
         desired_outcomes: responses?.desired_outcomes ?? [],
         risk_times: responses?.risk_times ?? [],
         risk_situations: responses?.risk_situations ?? [],
@@ -278,6 +306,7 @@ function OnboardingFlow() {
     async (
       patch: Partial<{
         focus_habits: string[];
+        focus_good_habits: string[];
         desired_outcomes: string[];
         risk_times: string[];
         risk_situations: string[];
@@ -338,6 +367,8 @@ function OnboardingFlow() {
   const onFocusNext = useCallback(
     (focus_habits: string[]) =>
       runStep(async () => {
+        // Sync user_bad_habits with the current selection (bad habits only).
+        // The good-habits step will sync again with the combined list.
         const supabase = getSupabaseClient();
         const { error: syncErr } = await supabase.rpc("sync_user_bad_habits", {
           p_habit_ids: focus_habits,
@@ -345,10 +376,41 @@ function OnboardingFlow() {
         if (syncErr) throw syncErr;
         await saveResponses({ focus_habits });
         setState((s) => ({ ...s, focus_habits }));
-        // Always go to first habit-question step (always at least 1 selected).
-        goToActualStep(FIRST_HABIT_STEP);
+        // Move to the good-habits step.
+        goToActualStep(GOOD_HABITS_STEP);
       }),
     [goToActualStep, runStep, saveResponses],
+  );
+
+  /**
+   * Good-habits step: persist the selection, expand user_bad_habits to the
+   * combined (bad + good) active set, then advance to the first habit-question
+   * screen if any bad habits are selected, otherwise to Waarom.
+   */
+  const onGoodHabitsNext = useCallback(
+    (focus_good_habits: string[]) =>
+      runStep(async () => {
+        const supabase = getSupabaseClient();
+        const combined = [...state.focus_habits, ...focus_good_habits];
+        const { error: syncErr } = await supabase.rpc("sync_user_bad_habits", {
+          p_habit_ids: combined,
+        });
+        if (syncErr) throw syncErr;
+        await saveResponses({ focus_good_habits });
+        setState((s) => ({ ...s, focus_good_habits }));
+        if (state.focus_habits.length > 0) {
+          goToActualStep(FIRST_HABIT_STEP);
+        } else {
+          goToLegacyStep(3);
+        }
+      }),
+    [
+      goToActualStep,
+      goToLegacyStep,
+      runStep,
+      saveResponses,
+      state.focus_habits,
+    ],
   );
 
   /**
@@ -546,6 +608,21 @@ function OnboardingFlow() {
       </div>
     </>
   );
+
+  // ----------------- GOOD-HABITS SCREEN -----------------
+  if (resolved.isGoodHabits) {
+    return wrap(
+      <StepGoodHabits
+        total={totalSteps}
+        current={step}
+        focusBadHabits={state.focus_habits}
+        focusGoodHabits={state.focus_good_habits}
+        saving={saving}
+        onBack={onBack}
+        onNext={onGoodHabitsNext}
+      />,
+    );
+  }
 
   // ----------------- HABIT-QUESTION SCREENS -----------------
   if (resolved.habitIndex !== null) {

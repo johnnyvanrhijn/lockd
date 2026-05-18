@@ -9,237 +9,1165 @@ export type Json =
   | boolean
   | null
   | { [key: string]: Json | undefined }
-  | Json[];
+  | Json[]
 
 export type Database = {
-  __InternalSupabase: { PostgrestVersion: "14.5" };
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
+  }
   public: {
     Tables: {
-      mood_logs: {
-        Row: { created_at: string; id: string; log_date: string; logged_at: string; mood: string; note: string | null; user_id: string };
-        Insert: { created_at?: string; id?: string; log_date: string; logged_at?: string; mood: string; note?: string | null; user_id: string };
-        Update: { created_at?: string; id?: string; log_date?: string; logged_at?: string; mood?: string; note?: string | null; user_id?: string };
-        Relationships: [];
-      };
-      buddy_pings: {
-        Row: { created_at: string; id: string; ping_type: string; receiver_id: string; sender_id: string };
-        Insert: { created_at?: string; id?: string; ping_type: string; receiver_id: string; sender_id: string };
-        Update: { created_at?: string; id?: string; ping_type?: string; receiver_id?: string; sender_id?: string };
-        Relationships: [];
-      };
-      goals: {
-        Row: { category: string | null; completed_at: string | null; created_at: string; current_day: number; custom_goal: boolean; duration_days: number; final_result: string | null; goal_template_key: string | null; id: string; progress_percentage: number; start_date: string; status: string; success_definition: Json | null; target_end_date: string; title: string; updated_at: string; user_id: string; why: string };
-        Insert: { category?: string | null; completed_at?: string | null; created_at?: string; current_day?: number; custom_goal?: boolean; duration_days: number; final_result?: string | null; goal_template_key?: string | null; id?: string; progress_percentage?: number; start_date?: string; status?: string; success_definition?: Json | null; target_end_date: string; title: string; updated_at?: string; user_id: string; why: string };
-        Update: { category?: string | null; completed_at?: string | null; created_at?: string; current_day?: number; custom_goal?: boolean; duration_days?: number; final_result?: string | null; goal_template_key?: string | null; id?: string; progress_percentage?: number; start_date?: string; status?: string; success_definition?: Json | null; target_end_date?: string; title?: string; updated_at?: string; user_id?: string; why?: string };
-        Relationships: [];
-      };
-      goal_habits: {
-        Row: { created_at: string; goal_id: string; habit_id: string | null; habit_name: string; id: string; impact_weight: number; is_selected: boolean; relation_type: string; user_id: string };
-        Insert: { created_at?: string; goal_id: string; habit_id?: string | null; habit_name: string; id?: string; impact_weight?: number; is_selected?: boolean; relation_type: string; user_id: string };
-        Update: { created_at?: string; goal_id?: string; habit_id?: string | null; habit_name?: string; id?: string; impact_weight?: number; is_selected?: boolean; relation_type?: string; user_id?: string };
-        Relationships: [
-          { foreignKeyName: "goal_habits_goal_id_fkey"; columns: ["goal_id"]; isOneToOne: false; referencedRelation: "goals"; referencedColumns: ["id"] },
-        ];
-      };
-      goal_reflections: {
-        Row: { created_at: string; feeling: string | null; goal_id: string; id: string; next_recommendation: string | null; reflection_text: string | null; result: string; user_id: string; what_helped: string[] | null; what_made_it_hard: string[] | null };
-        Insert: { created_at?: string; feeling?: string | null; goal_id: string; id?: string; next_recommendation?: string | null; reflection_text?: string | null; result: string; user_id: string; what_helped?: string[] | null; what_made_it_hard?: string[] | null };
-        Update: { created_at?: string; feeling?: string | null; goal_id?: string; id?: string; next_recommendation?: string | null; reflection_text?: string | null; result?: string; user_id?: string; what_helped?: string[] | null; what_made_it_hard?: string[] | null };
-        Relationships: [
-          { foreignKeyName: "goal_reflections_goal_id_fkey"; columns: ["goal_id"]; isOneToOne: false; referencedRelation: "goals"; referencedColumns: ["id"] },
-        ];
-      };
-      goal_daily_snapshots: {
-        Row: { created_at: string; goal_id: string; id: string; progress_percentage: number; sabotage_habits_triggered: number; snapshot_date: string; status_label: string | null; supporting_habits_completed: number; user_id: string };
-        Insert: { created_at?: string; goal_id: string; id?: string; progress_percentage?: number; sabotage_habits_triggered?: number; snapshot_date: string; status_label?: string | null; supporting_habits_completed?: number; user_id: string };
-        Update: { created_at?: string; goal_id?: string; id?: string; progress_percentage?: number; sabotage_habits_triggered?: number; snapshot_date?: string; status_label?: string | null; supporting_habits_completed?: number; user_id?: string };
-        Relationships: [
-          { foreignKeyName: "goal_daily_snapshots_goal_id_fkey"; columns: ["goal_id"]; isOneToOne: false; referencedRelation: "goals"; referencedColumns: ["id"] },
-        ];
-      };
       bad_habits_master: {
-        Row: { created_at: string; id: string; is_default: boolean; name: string; sort_order: number };
-        Insert: { created_at?: string; id: string; is_default?: boolean; name: string; sort_order: number };
-        Update: { created_at?: string; id?: string; is_default?: boolean; name?: string; sort_order?: number };
-        Relationships: [];
-      };
+        Row: {
+          antidote_habit_ids: string[]
+          category: string | null
+          created_at: string
+          daily_statement: string | null
+          id: string
+          is_default: boolean
+          name: string
+          sort_order: number
+          type: string
+        }
+        Insert: {
+          antidote_habit_ids?: string[]
+          category?: string | null
+          created_at?: string
+          daily_statement?: string | null
+          id: string
+          is_default?: boolean
+          name: string
+          sort_order: number
+          type?: string
+        }
+        Update: {
+          antidote_habit_ids?: string[]
+          category?: string | null
+          created_at?: string
+          daily_statement?: string | null
+          id?: string
+          is_default?: boolean
+          name?: string
+          sort_order?: number
+          type?: string
+        }
+        Relationships: []
+      }
+      buddy_pings: {
+        Row: {
+          created_at: string
+          id: string
+          ping_type: string
+          receiver_id: string
+          sender_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ping_type: string
+          receiver_id: string
+          sender_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ping_type?: string
+          receiver_id?: string
+          sender_id?: string
+        }
+        Relationships: []
+      }
       circle_invites: {
-        Row: { accepted_at: string | null; circle_id: string; created_at: string; expires_at: string; id: string; invite_code: string; invited_email: string | null; inviter_id: string; status: string };
-        Insert: { accepted_at?: string | null; circle_id: string; created_at?: string; expires_at?: string; id?: string; invite_code: string; invited_email?: string | null; inviter_id: string; status?: string };
-        Update: { accepted_at?: string | null; circle_id?: string; created_at?: string; expires_at?: string; id?: string; invite_code?: string; invited_email?: string | null; inviter_id?: string; status?: string };
+        Row: {
+          accepted_at: string | null
+          circle_id: string
+          created_at: string
+          expires_at: string
+          id: string
+          invite_code: string
+          invited_email: string | null
+          inviter_id: string
+          status: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          circle_id: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          invite_code: string
+          invited_email?: string | null
+          inviter_id: string
+          status?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          circle_id?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          invite_code?: string
+          invited_email?: string | null
+          inviter_id?: string
+          status?: string
+        }
         Relationships: [
-          { foreignKeyName: "circle_invites_circle_id_fkey"; columns: ["circle_id"]; isOneToOne: false; referencedRelation: "circles"; referencedColumns: ["id"] },
-        ];
-      };
+          {
+            foreignKeyName: "circle_invites_circle_id_fkey"
+            columns: ["circle_id"]
+            isOneToOne: false
+            referencedRelation: "circles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       circle_memberships: {
-        Row: { buddy_id: string; circle_id: string; id: string; joined_at: string; via_invite: string | null };
-        Insert: { buddy_id: string; circle_id: string; id?: string; joined_at?: string; via_invite?: string | null };
-        Update: { buddy_id?: string; circle_id?: string; id?: string; joined_at?: string; via_invite?: string | null };
+        Row: {
+          buddy_id: string
+          circle_id: string
+          id: string
+          joined_at: string
+          via_invite: string | null
+        }
+        Insert: {
+          buddy_id: string
+          circle_id: string
+          id?: string
+          joined_at?: string
+          via_invite?: string | null
+        }
+        Update: {
+          buddy_id?: string
+          circle_id?: string
+          id?: string
+          joined_at?: string
+          via_invite?: string | null
+        }
         Relationships: [
-          { foreignKeyName: "circle_memberships_circle_id_fkey"; columns: ["circle_id"]; isOneToOne: false; referencedRelation: "circles"; referencedColumns: ["id"] },
-          { foreignKeyName: "circle_memberships_via_invite_fkey"; columns: ["via_invite"]; isOneToOne: false; referencedRelation: "circle_invites"; referencedColumns: ["id"] },
-        ];
-      };
+          {
+            foreignKeyName: "circle_memberships_circle_id_fkey"
+            columns: ["circle_id"]
+            isOneToOne: false
+            referencedRelation: "circles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "circle_memberships_via_invite_fkey"
+            columns: ["via_invite"]
+            isOneToOne: false
+            referencedRelation: "circle_invites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       circles: {
-        Row: { created_at: string; id: string; owner_id: string };
-        Insert: { created_at?: string; id?: string; owner_id: string };
-        Update: { created_at?: string; id?: string; owner_id?: string };
-        Relationships: [];
-      };
+        Row: {
+          created_at: string
+          id: string
+          owner_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          owner_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          owner_id?: string
+        }
+        Relationships: []
+      }
+      goal_daily_snapshots: {
+        Row: {
+          created_at: string
+          goal_id: string
+          id: string
+          progress_percentage: number
+          sabotage_habits_triggered: number
+          snapshot_date: string
+          status_label: string | null
+          supporting_habits_completed: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          goal_id: string
+          id?: string
+          progress_percentage?: number
+          sabotage_habits_triggered?: number
+          snapshot_date: string
+          status_label?: string | null
+          supporting_habits_completed?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          goal_id?: string
+          id?: string
+          progress_percentage?: number
+          sabotage_habits_triggered?: number
+          snapshot_date?: string
+          status_label?: string | null
+          supporting_habits_completed?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goal_daily_snapshots_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      goal_habits: {
+        Row: {
+          created_at: string
+          goal_id: string
+          habit_id: string | null
+          habit_name: string
+          id: string
+          impact_weight: number
+          is_selected: boolean
+          relation_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          goal_id: string
+          habit_id?: string | null
+          habit_name: string
+          id?: string
+          impact_weight?: number
+          is_selected?: boolean
+          relation_type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          goal_id?: string
+          habit_id?: string | null
+          habit_name?: string
+          id?: string
+          impact_weight?: number
+          is_selected?: boolean
+          relation_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goal_habits_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      goal_reflections: {
+        Row: {
+          created_at: string
+          feeling: string | null
+          goal_id: string
+          id: string
+          next_recommendation: string | null
+          reflection_text: string | null
+          result: string
+          user_id: string
+          what_helped: string[] | null
+          what_made_it_hard: string[] | null
+        }
+        Insert: {
+          created_at?: string
+          feeling?: string | null
+          goal_id: string
+          id?: string
+          next_recommendation?: string | null
+          reflection_text?: string | null
+          result: string
+          user_id: string
+          what_helped?: string[] | null
+          what_made_it_hard?: string[] | null
+        }
+        Update: {
+          created_at?: string
+          feeling?: string | null
+          goal_id?: string
+          id?: string
+          next_recommendation?: string | null
+          reflection_text?: string | null
+          result?: string
+          user_id?: string
+          what_helped?: string[] | null
+          what_made_it_hard?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goal_reflections_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      goals: {
+        Row: {
+          category: string | null
+          completed_at: string | null
+          created_at: string
+          current_day: number
+          custom_goal: boolean
+          duration_days: number
+          final_result: string | null
+          goal_template_key: string | null
+          id: string
+          progress_percentage: number
+          start_date: string
+          status: string
+          success_definition: Json | null
+          target_end_date: string
+          title: string
+          updated_at: string
+          user_id: string
+          why: string
+        }
+        Insert: {
+          category?: string | null
+          completed_at?: string | null
+          created_at?: string
+          current_day?: number
+          custom_goal?: boolean
+          duration_days: number
+          final_result?: string | null
+          goal_template_key?: string | null
+          id?: string
+          progress_percentage?: number
+          start_date?: string
+          status?: string
+          success_definition?: Json | null
+          target_end_date: string
+          title: string
+          updated_at?: string
+          user_id: string
+          why: string
+        }
+        Update: {
+          category?: string | null
+          completed_at?: string | null
+          created_at?: string
+          current_day?: number
+          custom_goal?: boolean
+          duration_days?: number
+          final_result?: string | null
+          goal_template_key?: string | null
+          id?: string
+          progress_percentage?: number
+          start_date?: string
+          status?: string
+          success_definition?: Json | null
+          target_end_date?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+          why?: string
+        }
+        Relationships: []
+      }
       habit_logs: {
-        Row: { created_at: string; habit_id: string; id: string; log_date: string; notes: string | null; status: string; updated_at: string; user_id: string };
-        Insert: { created_at?: string; habit_id: string; id?: string; log_date: string; notes?: string | null; status: string; updated_at?: string; user_id: string };
-        Update: { created_at?: string; habit_id?: string; id?: string; log_date?: string; notes?: string | null; status?: string; updated_at?: string; user_id?: string };
+        Row: {
+          created_at: string
+          habit_id: string
+          id: string
+          log_date: string
+          notes: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          habit_id: string
+          id?: string
+          log_date: string
+          notes?: string | null
+          status: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          habit_id?: string
+          id?: string
+          log_date?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
         Relationships: [
-          { foreignKeyName: "habit_logs_habit_id_fkey"; columns: ["habit_id"]; isOneToOne: false; referencedRelation: "bad_habits_master"; referencedColumns: ["id"] },
-        ];
-      };
+          {
+            foreignKeyName: "habit_logs_habit_id_fkey"
+            columns: ["habit_id"]
+            isOneToOne: false
+            referencedRelation: "bad_habits_master"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       habit_questions_master: {
-        Row: { config: Json | null; created_at: string; default_value: Json; habit_id: string; id: string; metric_key: string | null; options: Json | null; question: string; question_type: string; sort_order: number; unit: string | null };
-        Insert: { config?: Json | null; created_at?: string; default_value: Json; habit_id: string; id: string; metric_key?: string | null; options?: Json | null; question: string; question_type: string; sort_order: number; unit?: string | null };
-        Update: { config?: Json | null; created_at?: string; default_value?: Json; habit_id?: string; id?: string; metric_key?: string | null; options?: Json | null; question?: string; question_type?: string; sort_order?: number; unit?: string | null };
+        Row: {
+          config: Json | null
+          created_at: string
+          default_value: Json
+          habit_id: string
+          id: string
+          metric_key: string | null
+          options: Json | null
+          question: string
+          question_type: string
+          sort_order: number
+          unit: string | null
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string
+          default_value: Json
+          habit_id: string
+          id: string
+          metric_key?: string | null
+          options?: Json | null
+          question: string
+          question_type: string
+          sort_order: number
+          unit?: string | null
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string
+          default_value?: Json
+          habit_id?: string
+          id?: string
+          metric_key?: string | null
+          options?: Json | null
+          question?: string
+          question_type?: string
+          sort_order?: number
+          unit?: string | null
+        }
         Relationships: [
-          { foreignKeyName: "habit_questions_master_habit_id_fkey"; columns: ["habit_id"]; isOneToOne: false; referencedRelation: "bad_habits_master"; referencedColumns: ["id"] },
-        ];
-      };
+          {
+            foreignKeyName: "habit_questions_master_habit_id_fkey"
+            columns: ["habit_id"]
+            isOneToOne: false
+            referencedRelation: "bad_habits_master"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mood_logs: {
+        Row: {
+          created_at: string
+          id: string
+          log_date: string
+          logged_at: string
+          mood: string
+          note: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          log_date: string
+          logged_at?: string
+          mood: string
+          note?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          log_date?: string
+          logged_at?: string
+          mood?: string
+          note?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       onboarding_responses: {
-        Row: { accountability_mode: string; active_intervention: boolean; completed_at: string | null; created_at: string; desired_outcomes: string[]; focus_habits: string[]; risk_situations: string[]; risk_times: string[]; support_modes: string[]; tone_of_voice: string; triggers: string[]; updated_at: string; user_id: string };
-        Insert: { accountability_mode?: string; active_intervention?: boolean; completed_at?: string | null; created_at?: string; desired_outcomes?: string[]; focus_habits?: string[]; risk_situations?: string[]; risk_times?: string[]; support_modes?: string[]; tone_of_voice?: string; triggers?: string[]; updated_at?: string; user_id: string };
-        Update: { accountability_mode?: string; active_intervention?: boolean; completed_at?: string | null; created_at?: string; desired_outcomes?: string[]; focus_habits?: string[]; risk_situations?: string[]; risk_times?: string[]; support_modes?: string[]; tone_of_voice?: string; triggers?: string[]; updated_at?: string; user_id?: string };
-        Relationships: [];
-      };
+        Row: {
+          accountability_mode: string
+          active_intervention: boolean
+          completed_at: string | null
+          created_at: string
+          desired_outcomes: string[]
+          focus_good_habits: string[]
+          focus_habits: string[]
+          risk_situations: string[]
+          risk_times: string[]
+          support_modes: string[]
+          tone_of_voice: string
+          triggers: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          accountability_mode?: string
+          active_intervention?: boolean
+          completed_at?: string | null
+          created_at?: string
+          desired_outcomes?: string[]
+          focus_good_habits?: string[]
+          focus_habits?: string[]
+          risk_situations?: string[]
+          risk_times?: string[]
+          support_modes?: string[]
+          tone_of_voice?: string
+          triggers?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          accountability_mode?: string
+          active_intervention?: boolean
+          completed_at?: string | null
+          created_at?: string
+          desired_outcomes?: string[]
+          focus_good_habits?: string[]
+          focus_habits?: string[]
+          risk_situations?: string[]
+          risk_times?: string[]
+          support_modes?: string[]
+          tone_of_voice?: string
+          triggers?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
-        Row: { circle_privacy: Json; created_at: string; display_name: string | null; email: string; id: string; onboarded_at: string | null; updated_at: string };
-        Insert: { circle_privacy?: Json; created_at?: string; display_name?: string | null; email: string; id: string; onboarded_at?: string | null; updated_at?: string };
-        Update: { circle_privacy?: Json; created_at?: string; display_name?: string | null; email?: string; id?: string; onboarded_at?: string | null; updated_at?: string };
-        Relationships: [];
-      };
+        Row: {
+          circle_privacy: Json
+          created_at: string
+          display_name: string | null
+          email: string
+          id: string
+          onboarded_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          circle_privacy?: Json
+          created_at?: string
+          display_name?: string | null
+          email: string
+          id: string
+          onboarded_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          circle_privacy?: Json
+          created_at?: string
+          display_name?: string | null
+          email?: string
+          id?: string
+          onboarded_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       reflections: {
-        Row: { body: string; created_at: string; id: string; user_id: string };
-        Insert: { body: string; created_at?: string; id?: string; user_id: string };
-        Update: { body?: string; created_at?: string; id?: string; user_id?: string };
-        Relationships: [];
-      };
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       struggle_sessions: {
-        Row: { closed_at: string | null; completed_at: string | null; created_at: string; current_step: string | null; goal_id: string | null; habit_id: string | null; id: string; intervention_completed: boolean; intervention_duration_seconds: number | null; metadata: Json; protected_goal_title: string | null; protected_habit_name: string | null; reflection_tags: string[] | null; reflection_text: string | null; selected_intervention: string | null; status: string; trigger_states: string[] | null; underlying_need: string | null; urge_reduction: number | null; urge_reduction_percentage: number | null; urge_score_after: number | null; urge_score_before: number | null; user_id: string };
-        Insert: { closed_at?: string | null; completed_at?: string | null; created_at?: string; current_step?: string | null; goal_id?: string | null; habit_id?: string | null; id?: string; intervention_completed?: boolean; intervention_duration_seconds?: number | null; metadata?: Json; protected_goal_title?: string | null; protected_habit_name?: string | null; reflection_tags?: string[] | null; reflection_text?: string | null; selected_intervention?: string | null; status?: string; trigger_states?: string[] | null; underlying_need?: string | null; urge_reduction?: number | null; urge_reduction_percentage?: number | null; urge_score_after?: number | null; urge_score_before?: number | null; user_id: string };
-        Update: { closed_at?: string | null; completed_at?: string | null; created_at?: string; current_step?: string | null; goal_id?: string | null; habit_id?: string | null; id?: string; intervention_completed?: boolean; intervention_duration_seconds?: number | null; metadata?: Json; protected_goal_title?: string | null; protected_habit_name?: string | null; reflection_tags?: string[] | null; reflection_text?: string | null; selected_intervention?: string | null; status?: string; trigger_states?: string[] | null; underlying_need?: string | null; urge_reduction?: number | null; urge_reduction_percentage?: number | null; urge_score_after?: number | null; urge_score_before?: number | null; user_id?: string };
+        Row: {
+          closed_at: string | null
+          completed_at: string | null
+          created_at: string
+          current_step: string | null
+          goal_id: string | null
+          habit_id: string | null
+          id: string
+          intervention_completed: boolean
+          intervention_duration_seconds: number | null
+          metadata: Json
+          protected_goal_title: string | null
+          protected_habit_name: string | null
+          reflection_tags: string[] | null
+          reflection_text: string | null
+          selected_intervention: string | null
+          status: string
+          trigger_states: string[] | null
+          underlying_need: string | null
+          urge_reduction: number | null
+          urge_reduction_percentage: number | null
+          urge_score_after: number | null
+          urge_score_before: number | null
+          user_id: string
+        }
+        Insert: {
+          closed_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          current_step?: string | null
+          goal_id?: string | null
+          habit_id?: string | null
+          id?: string
+          intervention_completed?: boolean
+          intervention_duration_seconds?: number | null
+          metadata?: Json
+          protected_goal_title?: string | null
+          protected_habit_name?: string | null
+          reflection_tags?: string[] | null
+          reflection_text?: string | null
+          selected_intervention?: string | null
+          status?: string
+          trigger_states?: string[] | null
+          underlying_need?: string | null
+          urge_reduction?: number | null
+          urge_reduction_percentage?: number | null
+          urge_score_after?: number | null
+          urge_score_before?: number | null
+          user_id: string
+        }
+        Update: {
+          closed_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          current_step?: string | null
+          goal_id?: string | null
+          habit_id?: string | null
+          id?: string
+          intervention_completed?: boolean
+          intervention_duration_seconds?: number | null
+          metadata?: Json
+          protected_goal_title?: string | null
+          protected_habit_name?: string | null
+          reflection_tags?: string[] | null
+          reflection_text?: string | null
+          selected_intervention?: string | null
+          status?: string
+          trigger_states?: string[] | null
+          underlying_need?: string | null
+          urge_reduction?: number | null
+          urge_reduction_percentage?: number | null
+          urge_score_after?: number | null
+          urge_score_before?: number | null
+          user_id?: string
+        }
         Relationships: [
-          { foreignKeyName: "struggle_sessions_goal_id_fkey"; columns: ["goal_id"]; isOneToOne: false; referencedRelation: "goals"; referencedColumns: ["id"] },
-        ];
-      };
+          {
+            foreignKeyName: "struggle_sessions_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_bad_habits: {
-        Row: { active: boolean; created_at: string; habit_id: string; id: string; user_id: string };
-        Insert: { active?: boolean; created_at?: string; habit_id: string; id?: string; user_id: string };
-        Update: { active?: boolean; created_at?: string; habit_id?: string; id?: string; user_id?: string };
+        Row: {
+          active: boolean
+          created_at: string
+          habit_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          habit_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          habit_id?: string
+          id?: string
+          user_id?: string
+        }
         Relationships: [
-          { foreignKeyName: "user_bad_habits_habit_id_fkey"; columns: ["habit_id"]; isOneToOne: false; referencedRelation: "bad_habits_master"; referencedColumns: ["id"] },
-        ];
-      };
+          {
+            foreignKeyName: "user_bad_habits_habit_id_fkey"
+            columns: ["habit_id"]
+            isOneToOne: false
+            referencedRelation: "bad_habits_master"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_habit_answers: {
-        Row: { answer: Json; created_at: string; habit_id: string; id: string; question_id: string; updated_at: string; user_id: string };
-        Insert: { answer: Json; created_at?: string; habit_id: string; id?: string; question_id: string; updated_at?: string; user_id: string };
-        Update: { answer?: Json; created_at?: string; habit_id?: string; id?: string; question_id?: string; updated_at?: string; user_id?: string };
+        Row: {
+          answer: Json
+          created_at: string
+          habit_id: string
+          id: string
+          question_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          answer: Json
+          created_at?: string
+          habit_id: string
+          id?: string
+          question_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          answer?: Json
+          created_at?: string
+          habit_id?: string
+          id?: string
+          question_id?: string
+          updated_at?: string
+          user_id?: string
+        }
         Relationships: [
-          { foreignKeyName: "user_habit_answers_habit_id_fkey"; columns: ["habit_id"]; isOneToOne: false; referencedRelation: "bad_habits_master"; referencedColumns: ["id"] },
-          { foreignKeyName: "user_habit_answers_question_id_fkey"; columns: ["question_id"]; isOneToOne: false; referencedRelation: "habit_questions_master"; referencedColumns: ["id"] },
-        ];
-      };
-    };
-    Views: { [_ in never]: never };
+          {
+            foreignKeyName: "user_habit_answers_habit_id_fkey"
+            columns: ["habit_id"]
+            isOneToOne: false
+            referencedRelation: "bad_habits_master"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_habit_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "habit_questions_master"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
     Functions: {
-      abandon_goal: { Args: { p_goal_id: string; p_with_reflection: boolean; p_reflection?: Json | null }; Returns: string | null };
-      close_struggle_session: { Args: { p_session_id: string }; Returns: undefined };
-      complete_struggle_session: { Args: { p_session_id: string }; Returns: undefined };
-      accept_invite: { Args: { p_code: string }; Returns: string };
-      clear_habit_log: { Args: { p_habit_id: string; p_log_date: string }; Returns: undefined };
-      complete_goal: { Args: { p_goal_id: string; p_reflection: Json; p_status?: string }; Returns: string };
-      complete_onboarding: { Args: Record<string, never>; Returns: string };
-      create_goal: { Args: { p_payload: Json }; Returns: string };
-      ensure_my_invite_code: { Args: Record<string, never>; Returns: string };
-      get_active_goal: { Args: Record<string, never>; Returns: Database["public"]["Tables"]["goals"]["Row"][] };
-      get_circle_signals: { Args: Record<string, never>; Returns: { buddy_id: string; display_name: string; streak_days: number; has_recent_struggle: boolean; unread_pings_count: number; hou_scherp_cooldown: boolean; goed_bezig_cooldown: boolean }[] };
-      get_consistency_history: { Args: { p_from: string; p_to: string }; Returns: { active: number; d: string; fail: number; pct: number; pending: number; success: number }[] };
-      get_goal_detail: { Args: { p_goal_id: string }; Returns: Json };
-      get_recent_struggle: { Args: Record<string, never>; Returns: Database["public"]["Tables"]["struggle_sessions"]["Row"] | null };
-      get_struggle_pattern: { Args: Record<string, never>; Returns: Json };
-      get_day_detail: { Args: { p_day: string }; Returns: { habit_id: string; name: string; status: string }[] };
-      get_individual_streak: { Args: { p_habit_id: string; p_today: string }; Returns: { best_streak: number; current_streak: number; fail_count: number; success_count: number }[] };
-      get_individual_streaks: { Args: { p_today: string }; Returns: { habit_id: string; current_streak: number }[] };
-      get_invite_preview: { Args: { p_code: string }; Returns: { expires_at: string; invite_code: string; inviter_display_name: string; inviter_id: string; status: string }[] };
-      get_lockd_streak: { Args: { p_today: string }; Returns: { best_streak: number; current_streak: number }[] };
-      get_mood_pattern: { Args: { p_days?: number }; Returns: { log_date: string; mood: string; count: number }[] };
-      get_today_consistency: { Args: { p_today: string }; Returns: { active: number; fail: number; pct: number; pending: number; success: number }[] };
-      get_today_mood: { Args: { p_log_date: string }; Returns: { mood: string; logged_at: string }[] };
-      list_goals_history: { Args: { p_limit?: number }; Returns: Database["public"]["Tables"]["goals"]["Row"][] };
-      log_habit: { Args: { p_habit_id: string; p_log_date: string; p_status: string }; Returns: string };
-      log_mood: { Args: { p_mood: string; p_log_date: string; p_note?: string | null }; Returns: string };
-      save_habit_answers: { Args: { p_answers: Json; p_habit_id: string }; Returns: undefined };
-      save_reflection: { Args: { p_body: string; p_urge_event_id?: string }; Returns: string };
-      send_buddy_ping: { Args: { p_receiver_id: string; p_ping_type: string }; Returns: string };
-      update_mood_note: { Args: { p_id: string; p_note: string }; Returns: undefined };
-      start_struggle_session: { Args: { p_habit_id?: string | null; p_goal_id?: string | null; p_protected_habit_name?: string | null; p_protected_goal_title?: string | null }; Returns: string };
-      sync_user_bad_habits: { Args: { p_habit_ids: string[] }; Returns: undefined };
-      update_struggle_step: { Args: { p_session_id: string; p_step: string; p_payload: Json }; Returns: undefined };
-      upsert_goal_snapshot: { Args: { p_goal_id: string }; Returns: undefined };
-    };
-    Enums: { [_ in never]: never };
-    CompositeTypes: { [_ in never]: never };
-  };
-};
+      _get_lockd_streak_for_user: {
+        Args: { p_today: string; p_user: string }
+        Returns: number
+      }
+      abandon_goal: {
+        Args: {
+          p_goal_id: string
+          p_reflection?: Json
+          p_with_reflection: boolean
+        }
+        Returns: string
+      }
+      accept_invite: { Args: { p_code: string }; Returns: string }
+      clear_habit_log: {
+        Args: { p_habit_id: string; p_log_date: string }
+        Returns: undefined
+      }
+      close_struggle_session: {
+        Args: { p_session_id: string }
+        Returns: undefined
+      }
+      complete_goal: {
+        Args: { p_goal_id: string; p_reflection: Json; p_status?: string }
+        Returns: string
+      }
+      complete_onboarding: { Args: never; Returns: string }
+      complete_struggle_session: {
+        Args: { p_session_id: string }
+        Returns: undefined
+      }
+      complete_urge_event: {
+        Args: { p_audio_used?: boolean; p_event_id: string; p_log_date: string }
+        Returns: undefined
+      }
+      create_goal: { Args: { p_payload: Json }; Returns: string }
+      ensure_my_invite_code: { Args: never; Returns: string }
+      get_active_goal: {
+        Args: never
+        Returns: {
+          category: string | null
+          completed_at: string | null
+          created_at: string
+          current_day: number
+          custom_goal: boolean
+          duration_days: number
+          final_result: string | null
+          goal_template_key: string | null
+          id: string
+          progress_percentage: number
+          start_date: string
+          status: string
+          success_definition: Json | null
+          target_end_date: string
+          title: string
+          updated_at: string
+          user_id: string
+          why: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "goals"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_circle_signals: {
+        Args: never
+        Returns: {
+          buddy_id: string
+          display_name: string
+          goed_bezig_cooldown: boolean
+          has_recent_struggle: boolean
+          hou_scherp_cooldown: boolean
+          streak_days: number
+          unread_pings_count: number
+        }[]
+      }
+      get_consistency_history: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          active: number
+          d: string
+          fail: number
+          pct: number
+          pending: number
+          success: number
+        }[]
+      }
+      get_day_detail: {
+        Args: { p_day: string }
+        Returns: {
+          habit_id: string
+          name: string
+          status: string
+        }[]
+      }
+      get_goal_detail: { Args: { p_goal_id: string }; Returns: Json }
+      get_individual_streak: {
+        Args: { p_habit_id: string; p_today: string }
+        Returns: {
+          best_streak: number
+          current_streak: number
+          fail_count: number
+          success_count: number
+        }[]
+      }
+      get_individual_streaks: {
+        Args: { p_today: string }
+        Returns: {
+          current_streak: number
+          habit_id: string
+        }[]
+      }
+      get_invite_preview: {
+        Args: { p_code: string }
+        Returns: {
+          expires_at: string
+          invite_code: string
+          inviter_display_name: string
+          inviter_id: string
+          status: string
+        }[]
+      }
+      get_lockd_streak: {
+        Args: { p_today: string }
+        Returns: {
+          best_streak: number
+          current_streak: number
+        }[]
+      }
+      get_mood_pattern: {
+        Args: { p_days?: number }
+        Returns: {
+          count: number
+          log_date: string
+          mood: string
+        }[]
+      }
+      get_recent_struggle: {
+        Args: never
+        Returns: {
+          closed_at: string | null
+          completed_at: string | null
+          created_at: string
+          current_step: string | null
+          goal_id: string | null
+          habit_id: string | null
+          id: string
+          intervention_completed: boolean
+          intervention_duration_seconds: number | null
+          metadata: Json
+          protected_goal_title: string | null
+          protected_habit_name: string | null
+          reflection_tags: string[] | null
+          reflection_text: string | null
+          selected_intervention: string | null
+          status: string
+          trigger_states: string[] | null
+          underlying_need: string | null
+          urge_reduction: number | null
+          urge_reduction_percentage: number | null
+          urge_score_after: number | null
+          urge_score_before: number | null
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "struggle_sessions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      get_struggle_pattern: { Args: never; Returns: Json }
+      get_today_consistency: {
+        Args: { p_today: string }
+        Returns: {
+          active: number
+          fail: number
+          pct: number
+          pending: number
+          success: number
+        }[]
+      }
+      get_today_mood: {
+        Args: { p_log_date: string }
+        Returns: {
+          logged_at: string
+          mood: string
+        }[]
+      }
+      list_goals_history: {
+        Args: { p_limit?: number }
+        Returns: {
+          category: string | null
+          completed_at: string | null
+          created_at: string
+          current_day: number
+          custom_goal: boolean
+          duration_days: number
+          final_result: string | null
+          goal_template_key: string | null
+          id: string
+          progress_percentage: number
+          start_date: string
+          status: string
+          success_definition: Json | null
+          target_end_date: string
+          title: string
+          updated_at: string
+          user_id: string
+          why: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "goals"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      log_habit: {
+        Args: { p_habit_id: string; p_log_date: string; p_status: string }
+        Returns: string
+      }
+      log_mood: {
+        Args: { p_log_date: string; p_mood: string; p_note?: string }
+        Returns: string
+      }
+      save_habit_answers: {
+        Args: { p_answers: Json; p_habit_id: string }
+        Returns: undefined
+      }
+      save_reflection: {
+        Args: { p_body: string; p_urge_event_id?: string }
+        Returns: string
+      }
+      send_buddy_ping: {
+        Args: { p_ping_type: string; p_receiver_id: string }
+        Returns: string
+      }
+      start_struggle_session: {
+        Args: {
+          p_goal_id?: string
+          p_habit_id?: string
+          p_protected_goal_title?: string
+          p_protected_habit_name?: string
+        }
+        Returns: string
+      }
+      start_urge_event: {
+        Args: {
+          p_habit_id: string
+          p_intensity: number
+          p_interruption_action?: string
+          p_trigger: string
+        }
+        Returns: string
+      }
+      sync_user_bad_habits: {
+        Args: { p_habit_ids: string[] }
+        Returns: undefined
+      }
+      update_mood_note: {
+        Args: { p_id: string; p_note: string }
+        Returns: undefined
+      }
+      update_struggle_step: {
+        Args: { p_payload: Json; p_session_id: string; p_step: string }
+        Returns: undefined
+      }
+      upsert_goal_snapshot: { Args: { p_goal_id: string }; Returns: undefined }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}
 
-type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">;
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">];
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends { Row: infer R }
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] & DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends { Row: infer R }
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
       ? R
       : never
-    : never;
+    : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends { Insert: infer I }
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
     ? I
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends { Insert: infer I }
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
       ? I
       : never
-    : never;
+    : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends { Update: infer U }
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
     ? U
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends { Update: infer U }
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
       ? U
       : never
-    : never;
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const
