@@ -41,7 +41,7 @@ export function PrimaryInterventionCTA({
       onClick={open}
       className={cn(
         "group relative block w-full overflow-hidden rounded-[var(--radius-md)]",
-        "border border-purple/45 bg-gradient-to-br from-purple/15 via-purple/10 to-transparent",
+        "border border-purple/45 bg-gradient-to-br from-purple/18 via-purple/10 to-transparent",
         "px-5 py-5 text-left",
         "shadow-[0_24px_60px_-28px_var(--color-purple-glow)]",
         "transition-all duration-200 active:scale-[0.997]",
@@ -49,9 +49,14 @@ export function PrimaryInterventionCTA({
         "hover:border-purple/70 hover:shadow-[0_30px_70px_-26px_var(--color-purple-glow)]",
       )}
     >
+      {/* Volumetric depth: two offset orbs that simulate lit-from-inside */}
       <div
         aria-hidden
-        className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-purple/20 blur-3xl"
+        className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-purple/25 blur-3xl"
+      />
+      <div
+        aria-hidden
+        className="absolute -bottom-16 -left-8 h-32 w-32 rounded-full bg-purple-bright/15 blur-3xl"
       />
       <div className="relative flex flex-col gap-2">
         <span className="text-[10px] font-semibold uppercase tracking-[0.28em] text-purple-bright">

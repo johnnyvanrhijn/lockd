@@ -53,6 +53,7 @@ export function StreaksRail({ streaks }: Props) {
 }
 
 function StreakChip({ entry, rank }: { entry: StreakEntry; rank: number }) {
+  const lockedIn = entry.days >= 30;
   const hot = entry.days >= 7;
   return (
     <div
@@ -60,12 +61,17 @@ function StreakChip({ entry, rank }: { entry: StreakEntry; rank: number }) {
         "flex items-center justify-between gap-3",
         "rounded-[var(--radius-sm)] border px-3 py-2.5",
         "transition-colors",
-        hot
+        lockedIn
           ? [
-              "border-purple/45 bg-purple/10",
-              "shadow-[0_0_24px_-14px_var(--color-purple-glow)]",
+              "border-success/40 bg-success/8",
+              "shadow-[var(--shadow-glow-success)]",
             ]
-          : "border-[var(--color-border)] bg-surface/60",
+          : hot
+            ? [
+                "border-purple/45 bg-purple/10",
+                "shadow-[0_0_24px_-14px_var(--color-purple-glow)]",
+              ]
+            : "border-[var(--color-border)] bg-surface/60",
       )}
     >
       <div className="flex min-w-0 items-center gap-2.5">
@@ -75,9 +81,11 @@ function StreakChip({ entry, rank }: { entry: StreakEntry; rank: number }) {
             "flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
             "text-[10px] font-semibold tabular-nums",
             "border",
-            hot
-              ? "border-purple-bright/40 bg-purple/20 text-purple-bright"
-              : "border-[var(--color-border-strong)] bg-surface-elevated text-muted",
+            lockedIn
+              ? "border-success/40 bg-success/15 text-success"
+              : hot
+                ? "border-purple-bright/40 bg-purple/20 text-purple-bright"
+                : "border-[var(--color-border-strong)] bg-surface-elevated text-muted",
           )}
         >
           {rank}
@@ -90,9 +98,11 @@ function StreakChip({ entry, rank }: { entry: StreakEntry; rank: number }) {
         className={cn(
           "flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1",
           "text-xs font-semibold tabular-nums",
-          hot
-            ? "bg-purple/20 text-purple-bright"
-            : "bg-surface-elevated text-muted",
+          lockedIn
+            ? "bg-success/15 text-success"
+            : hot
+              ? "bg-purple/20 text-purple-bright"
+              : "bg-surface-elevated text-muted",
           "[&_svg]:h-3.5 [&_svg]:w-3.5",
         )}
       >

@@ -102,8 +102,18 @@ export function EmotionalCheckIn({ logDate, initialMood }: Props) {
   const selectedLabel = selected ? getMoodOption(selected)?.label ?? "" : "";
 
   return (
-    <GlassCard padding="md">
-      <div className="flex flex-col gap-3">
+    <GlassCard padding="md" className="overflow-hidden">
+      {selected && (
+        <div
+          aria-hidden
+          className={cn(
+            "pointer-events-none absolute inset-x-0 bottom-0 h-32",
+            "bg-[radial-gradient(ellipse_60%_70%_at_50%_100%,rgba(167,139,250,0.18),transparent_70%)]",
+            "transition-opacity duration-500",
+          )}
+        />
+      )}
+      <div className="relative flex flex-col gap-3">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-sm font-semibold text-foreground">
             Hoe voel je je nu?
@@ -194,5 +204,7 @@ export function EmotionalCheckIn({ logDate, initialMood }: Props) {
     </GlassCard>
   );
 }
+
+
 
 export default EmotionalCheckIn;

@@ -61,15 +61,19 @@ export function IdentityHeroCard({
   void _bestStreak;
   const hasHabits = activeCount > 0;
   const isClickable = Boolean(onOpenHistory);
+  const isComplete = hasHabits && successCount >= activeCount;
 
   const ringValue = hasHabits ? successCount : 0;
   const ringMax = hasHabits ? activeCount : 1;
+  const ringTone = isComplete ? "success" : "purple";
 
-  const subline = hasHabits
-    ? successCount === 0
-      ? "Tik op een standaard hieronder om te beschermen."
-      : "Elke keuze bevestigt wie je bent."
-    : "Open je profiel om gewoontes te kiezen.";
+  const subline = !hasHabits
+    ? "Open je profiel om gewoontes te kiezen."
+    : isComplete
+      ? "Vandaag, helemaal beschermd."
+      : successCount === 0
+        ? "Tik op een standaard hieronder om te beschermen."
+        : "Elke keuze bevestigt wie je bent.";
 
   return (
     <button
@@ -85,10 +89,19 @@ export function IdentityHeroCard({
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-bright/60",
       )}
     >
-      <GlassCard tone="purple" glow="soft" padding="lg">
+      <GlassCard
+        tone={isComplete ? "success" : "purple"}
+        glow={isComplete ? "success" : "soft"}
+        padding="lg"
+      >
         <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 flex-col gap-1.5">
-            <span className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-purple-bright">
+            <span
+              className={cn(
+                "flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.25em]",
+                isComplete ? "text-success" : "text-purple-bright",
+              )}
+            >
               <ShieldGlow />
               <span>Vandaag</span>
             </span>
@@ -109,6 +122,7 @@ export function IdentityHeroCard({
               max={ringMax}
               size={108}
               strokeWidth={8}
+              tone={ringTone}
               label={
                 hasHabits
                   ? `${successCount} van ${activeCount} standaarden vandaag`
@@ -127,7 +141,12 @@ export function IdentityHeroCard({
                     —
                   </span>
                 )}
-                <span className="mt-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-purple-bright">
+                <span
+                  className={cn(
+                    "mt-1 text-[10px] font-semibold uppercase tracking-[0.2em]",
+                    isComplete ? "text-success" : "text-purple-bright",
+                  )}
+                >
                   Beschermd
                 </span>
               </div>

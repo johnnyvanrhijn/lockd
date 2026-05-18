@@ -123,9 +123,11 @@ export function HabitCommitmentCard({
           <span
             className={cn(
               "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums",
-              streakDays > 0
-                ? "bg-purple/15 text-purple-bright"
-                : "bg-surface-elevated text-muted",
+              streakDays >= 30
+                ? "bg-success/15 text-success"
+                : streakDays > 0
+                  ? "bg-purple/15 text-purple-bright"
+                  : "bg-surface-elevated text-muted",
             )}
           >
             <FlameGlyph />
