@@ -9,11 +9,16 @@ import { LoadingSkeleton } from "@/components/ui/LoadingSkeleton";
 import { BottomNav } from "@/components/navigation/BottomNav";
 import { NAV_ITEMS, NAV_ROUTES } from "@/components/navigation/navItems";
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { getBadHabitName } from "@/lib/badHabits/catalog";
+import {
+  getBadHabitName,
+  getDailyStatement,
+  getHabitType,
+} from "@/lib/badHabits/catalog";
 import { getActiveLogDate, subDays } from "@/lib/badHabits/clientDate";
 import { IdentityHeroCard } from "@/components/badHabits/IdentityHeroCard";
 import {
   HabitCommitmentCard,
+  type CommitmentHabitType,
   type CommitmentStatus,
 } from "@/components/badHabits/HabitCommitmentCard";
 import { RiskCard } from "@/components/badHabits/RiskCard";
@@ -92,9 +97,14 @@ function PencilIcon() {
 type ActiveHabit = {
   habit_id: string;
   name: string;
+  dailyStatement: string;
+  habitType: CommitmentHabitType;
   status: CommitmentStatus;
   streak: number;
 };
+
+/** Habits beyond this index render as compact rows. */
+const FULL_CARD_LIMIT = 3;
 
 type DashboardData = {
   displayName: string | null;
@@ -246,6 +256,8 @@ export default function DashboardPage() {
             habit_id: h.habit_id,
             name:
               joined.bad_habits_master?.name ?? getBadHabitName(h.habit_id),
+            dailyStatement: getDailyStatement(h.habit_id),
+            habitType: (getHabitType(h.habit_id) ?? "bad") as CommitmentHabitType,
             status: statusByHabit[h.habit_id] ?? "pending",
             streak: streakByHabit[h.habit_id] ?? 0,
             sortOrder: joined.bad_habits_master?.sort_order ?? 999,
@@ -580,12 +592,15 @@ export default function DashboardPage() {
               </GlassCard>
             ) : (
               <div className="flex flex-col gap-2">
-                {data.habits.map((h) => (
+                {data.habits.map((h, i) => (
                   <HabitCommitmentCard
                     key={h.habit_id}
                     name={h.name}
+                    dailyStatement={h.dailyStatement}
+                    habitType={h.habitType}
                     streakDays={h.streak}
                     status={h.status}
+                    variant={i < FULL_CARD_LIMIT ? "full" : "compact"}
                     disabled={savingHabit === h.habit_id}
                     onSuccess={() => handleAction(h.habit_id, "success")}
                     onFail={() => handleAction(h.habit_id, "fail")}

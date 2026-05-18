@@ -8,15 +8,27 @@ import { CircularProgress } from "@/components/ui/CircularProgress";
 type Props = {
   /** LOCKD streak: consecutive days where consistency >= 80%. */
   lockdStreak: number;
-  /** Best LOCKD streak ever (for the supporting line). */
+  /** Best LOCKD streak ever (supporting line). */
   bestStreak: number;
-  /** Active habits today; null if user has nothing to commit to yet. */
+  /** Active habits today; 0 if user has nothing to commit to yet. */
   activeCount: number;
-  /** Number of habits the user kept their standard on so far. */
+  /** Number of habits the user kept their standard on so far today. */
   successCount: number;
   /** Whether the hero is tappable. */
   onOpenHistory?: () => void;
 };
+
+type HeroState = "empty" | "open" | "partial" | "complete";
+
+function resolveState(
+  activeCount: number,
+  successCount: number,
+): HeroState {
+  if (activeCount === 0) return "empty";
+  if (successCount === 0) return "open";
+  if (successCount >= activeCount) return "complete";
+  return "partial";
+}
 
 function ShieldGlow() {
   return (
@@ -47,33 +59,102 @@ function HeadlineNumber({ children }: { children: ReactNode }) {
 }
 
 /**
- * Hero card on the dashboard. Frames the day around identity ("Standaarden
- * beschermd") rather than failure ("days without X"). Tappable — opens the
- * history heatmap.
+ * Hero card on the dashboard. State machine:
+ *
+ *  empty    no active habits — invite to open profile.
+ *  open     habits active, none checked today — big = streak, ring empty.
+ *  partial  some checked today — big = "X/Y", ring partial, reactive feedback.
+ *  complete all checked — big = streak, ring full green, celebratory subline.
+ *
+ * Tappable: opens the history heatmap.
  */
 export function IdentityHeroCard({
   lockdStreak,
-  bestStreak: _bestStreak,
+  bestStreak,
   activeCount,
   successCount,
   onOpenHistory,
 }: Props) {
-  void _bestStreak;
-  const hasHabits = activeCount > 0;
   const isClickable = Boolean(onOpenHistory);
-  const isComplete = hasHabits && successCount >= activeCount;
+  const state = resolveState(activeCount, successCount);
+  const isComplete = state === "complete";
 
-  const ringValue = hasHabits ? successCount : 0;
-  const ringMax = hasHabits ? activeCount : 1;
+  const ringValue = activeCount > 0 ? successCount : 0;
+  const ringMax = activeCount > 0 ? activeCount : 1;
   const ringTone = isComplete ? "success" : "purple";
 
-  const subline = !hasHabits
-    ? "Open je profiel om gewoontes te kiezen."
-    : isComplete
-      ? "Vandaag, helemaal beschermd."
-      : successCount === 0
-        ? "Tik op een standaard hieronder om te beschermen."
-        : "Elke keuze bevestigt wie je bent.";
+  // Big metric varies per state.
+  const headline: ReactNode = (() => {
+    switch (state) {
+      case "empty":
+        return <HeadlineNumber>0</HeadlineNumber>;
+      case "open":
+        return <HeadlineNumber>{lockdStreak}</HeadlineNumber>;
+      case "partial":
+        return (
+          <span className="flex items-baseline gap-1 leading-none tabular-nums">
+            <span className="text-5xl font-semibold tracking-tight text-foreground">
+              {successCount}
+            </span>
+            <span className="text-2xl font-medium text-muted">/</span>
+            <span className="text-2xl font-medium text-muted">
+              {activeCount}
+            </span>
+          </span>
+        );
+      case "complete":
+        return <HeadlineNumber>{lockdStreak}</HeadlineNumber>;
+    }
+  })();
+
+  const headlineSuffix: string = (() => {
+    switch (state) {
+      case "empty":
+        return "dagen op rij";
+      case "open":
+        return lockdStreak === 1 ? "dag op rij" : "dagen op rij";
+      case "partial":
+        return "vandaag staat";
+      case "complete":
+        return lockdStreak === 1
+          ? "dag volledig beschermd"
+          : "dagen volledig beschermd";
+    }
+  })();
+
+  const subline: string = (() => {
+    switch (state) {
+      case "empty":
+        return "Open je profiel om gewoontes te kiezen.";
+      case "open":
+        return "Tik op een standaard hieronder — vandaag is open.";
+      case "partial": {
+        const remaining = activeCount - successCount;
+        return remaining === 1
+          ? "Nog 1 om dag binnen te halen."
+          : `Nog ${remaining} om dag binnen te halen.`;
+      }
+      case "complete":
+        return bestStreak > lockdStreak
+          ? `Best ooit: ${bestStreak} dagen — ga ervoor.`
+          : "Vandaag, helemaal beschermd.";
+    }
+  })();
+
+  const ringLabel: string = (() => {
+    switch (state) {
+      case "empty":
+        return "Leeg";
+      case "open":
+        return "Open";
+      case "partial":
+        return "Bezig";
+      case "complete":
+        return "Klaar";
+    }
+  })();
+
+  const accentClass = isComplete ? "text-success" : "text-purple-bright";
 
   return (
     <button
@@ -99,18 +180,16 @@ export function IdentityHeroCard({
             <span
               className={cn(
                 "flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.25em]",
-                isComplete ? "text-success" : "text-purple-bright",
+                accentClass,
               )}
             >
               <ShieldGlow />
               <span>Vandaag</span>
             </span>
             <div className="flex items-baseline gap-2">
-              <HeadlineNumber>{lockdStreak}</HeadlineNumber>
+              {headline}
               <span className="text-sm font-medium text-foreground/85">
-                {lockdStreak === 1
-                  ? "dag volgens je standaarden"
-                  : "dagen volgens je standaarden"}
+                {headlineSuffix}
               </span>
             </div>
             <span className="text-xs text-muted">{subline}</span>
@@ -124,17 +203,21 @@ export function IdentityHeroCard({
               strokeWidth={8}
               tone={ringTone}
               label={
-                hasHabits
+                activeCount > 0
                   ? `${successCount} van ${activeCount} standaarden vandaag`
                   : "Nog geen gewoontes geselecteerd"
               }
             >
               <div className="flex flex-col items-center">
-                {hasHabits ? (
+                {activeCount > 0 ? (
                   <span className="flex items-baseline gap-0.5 leading-none tabular-nums text-foreground">
-                    <span className="text-[28px] font-semibold">{successCount}</span>
+                    <span className="text-[28px] font-semibold">
+                      {successCount}
+                    </span>
                     <span className="text-base text-muted">/</span>
-                    <span className="text-base font-medium text-muted">{activeCount}</span>
+                    <span className="text-base font-medium text-muted">
+                      {activeCount}
+                    </span>
                   </span>
                 ) : (
                   <span className="text-xl font-semibold leading-none text-muted">
@@ -144,18 +227,23 @@ export function IdentityHeroCard({
                 <span
                   className={cn(
                     "mt-1 text-[10px] font-semibold uppercase tracking-[0.2em]",
-                    isComplete ? "text-success" : "text-purple-bright",
+                    accentClass,
                   )}
                 >
-                  Beschermd
+                  {ringLabel}
                 </span>
               </div>
             </CircularProgress>
           </div>
         </div>
 
-        {hasHabits && (
-          <div className="mt-4 flex items-center justify-end border-t border-[var(--color-border)] pt-3 text-[11px]">
+        {activeCount > 0 && (
+          <div className="mt-4 flex items-center justify-between border-t border-[var(--color-border)] pt-3 text-[11px]">
+            <span className="text-muted">
+              {state === "complete"
+                ? `Streak: ${lockdStreak}d`
+                : `Streak: ${lockdStreak}d · best ${bestStreak}d`}
+            </span>
             <span className="inline-flex items-center gap-1 text-purple-bright">
               Geschiedenis
               <svg
