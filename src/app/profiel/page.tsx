@@ -6,8 +6,6 @@ import { AppShell } from "@/components/layout/AppShell";
 import { BottomNav } from "@/components/navigation/BottomNav";
 import { NAV_ITEMS, NAV_ROUTES } from "@/components/navigation/navItems";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { PrimaryButton } from "@/components/ui/PrimaryButton";
-import { GhostButton } from "@/components/ui/GhostButton";
 import { IconButton } from "@/components/ui/IconButton";
 import { LoadingSkeleton } from "@/components/ui/LoadingSkeleton";
 import { SummarySection } from "@/components/onboarding/SummarySection";
@@ -70,6 +68,18 @@ function CheckIcon() {
         strokeLinejoin="round"
       />
     </svg>
+  );
+}
+
+// Tier-A zone divider: thin top border + extra letter-spacing + muted color so
+// the major structural breaks read distinctly from per-section group labels.
+function ZoneHeader({ label }: { label: string }) {
+  return (
+    <div className="-mx-1 border-t border-[var(--color-border)] px-1 pt-3">
+      <span className="text-[10px] font-semibold uppercase tracking-[0.32em] text-muted/70">
+        {label}
+      </span>
+    </div>
   );
 }
 
@@ -314,7 +324,7 @@ export default function ProfilePage() {
           <LoadingSkeleton height="h-32" />
         </div>
       ) : (
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-8">
           <header className="flex flex-col gap-1">
             <h1 className="text-3xl font-semibold leading-tight tracking-tight text-foreground">
               Profiel
@@ -324,242 +334,261 @@ export default function ProfilePage() {
             </p>
           </header>
 
-          <GlassCard tone="elevated" padding="md" className="flex flex-col gap-3">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.25em] text-purple-bright">
-                  Naam
-                </span>
-                {editingName ? (
-                  <div className="flex items-center gap-2">
-                    <input
-                      autoFocus
-                      value={nameDraft}
-                      onChange={(e) => setNameDraft(e.target.value)}
-                      maxLength={40}
-                      className={cn(
-                        "min-w-0 flex-1 bg-transparent text-xl font-semibold text-foreground",
-                        "border-b border-purple/50 pb-0.5 outline-none",
-                        "focus:border-purple-bright",
-                      )}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") saveName();
-                        if (e.key === "Escape") {
-                          setEditingName(false);
-                          setNameDraft(profile.display_name ?? "");
-                        }
-                      }}
-                    />
-                    <IconButton
-                      aria-label="Naam opslaan"
-                      icon={<CheckIcon />}
-                      variant="primary"
-                      size="sm"
-                      onClick={saveName}
-                      loading={savingName}
-                    />
-                  </div>
-                ) : (
-                  <span className="text-xl font-semibold text-foreground">
-                    {profile.display_name || "Naamloos"}
-                  </span>
+          {/* Zone: ACCOUNT — identity */}
+          <section className="flex flex-col gap-3">
+            <ZoneHeader label="Account" />
+            <GlassCard tone="elevated" padding="md" className="flex flex-col gap-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  {editingName ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        autoFocus
+                        value={nameDraft}
+                        onChange={(e) => setNameDraft(e.target.value)}
+                        maxLength={40}
+                        className={cn(
+                          "min-w-0 flex-1 bg-transparent text-xl font-semibold text-foreground",
+                          "border-b border-purple/50 pb-0.5 outline-none",
+                          "focus:border-purple-bright",
+                        )}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") saveName();
+                          if (e.key === "Escape") {
+                            setEditingName(false);
+                            setNameDraft(profile.display_name ?? "");
+                          }
+                        }}
+                      />
+                      <IconButton
+                        aria-label="Naam opslaan"
+                        icon={<CheckIcon />}
+                        variant="primary"
+                        size="sm"
+                        onClick={saveName}
+                        loading={savingName}
+                      />
+                    </div>
+                  ) : (
+                    <span className="text-xl font-semibold text-foreground">
+                      {profile.display_name || "Naamloos"}
+                    </span>
+                  )}
+                </div>
+                {!editingName && (
+                  <IconButton
+                    aria-label="Naam wijzigen"
+                    icon={<PencilIcon />}
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setNameDraft(profile.display_name ?? "");
+                      setEditingName(true);
+                    }}
+                  />
                 )}
               </div>
-              {!editingName && (
-                <IconButton
-                  aria-label="Naam wijzigen"
-                  icon={<PencilIcon />}
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setNameDraft(profile.display_name ?? "");
-                    setEditingName(true);
-                  }}
-                />
-              )}
-            </div>
 
-            <div className="flex flex-col gap-1 pt-1">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.25em] text-muted">
-                Email
-              </span>
-              <span className="text-sm text-foreground">{profile.email}</span>
-            </div>
+              <div className="flex flex-col gap-1 pt-1">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.25em] text-muted">
+                  Email
+                </span>
+                <span className="text-sm text-foreground">{profile.email}</span>
+              </div>
 
-            <div className="flex flex-col gap-1 pt-1">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.25em] text-muted">
-                Lid sinds
-              </span>
-              <span className="text-sm text-foreground">
-                {formatSince(profile.created_at)}
-              </span>
-            </div>
-          </GlassCard>
-
-          {responses && (
-            <section className="flex flex-col gap-3">
-              <h2 className="px-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-purple-bright">
-                Jouw setup
-              </h2>
-              <GlassCard padding="none">
-                <div className="flex flex-col divide-y divide-[var(--color-border)] px-4">
-                  <SummarySection
-                    eyebrow="Jouw waarom"
-                    title="Wat je terug wil"
-                    onEdit={() => setEditingSection("outcomes")}
-                    defaultOpen={false}
-                  >
-                    {labelsFor(responses.desired_outcomes, OUTCOME_OPTIONS)}
-                  </SummarySection>
-                  <SummarySection
-                    eyebrow="Risicomomenten"
-                    title="Wanneer en waar"
-                    onEdit={() => setEditingSection("risk")}
-                    defaultOpen={false}
-                  >
-                    <div className="flex flex-col gap-1">
-                      <span>
-                        <span className="text-foreground">Tijd: </span>
-                        {labelsFor(responses.risk_times, TIME_OPTIONS)}
-                      </span>
-                      <span>
-                        <span className="text-foreground">Situaties: </span>
-                        {labelsFor(
-                          responses.risk_situations,
-                          SITUATION_OPTIONS,
-                        )}
-                      </span>
-                    </div>
-                  </SummarySection>
-                  <SummarySection
-                    eyebrow="Jouw triggers"
-                    title={`${responses.triggers.length} trigger${responses.triggers.length === 1 ? "" : "s"}`}
-                    onEdit={() => setEditingSection("triggers")}
-                    defaultOpen={false}
-                  >
-                    {labelsFor(responses.triggers, TRIGGER_OPTIONS)}
-                  </SummarySection>
-                  <SummarySection
-                    eyebrow="Ondersteuning"
-                    title={`Tone: ${TONE_OPTIONS.find((t) => t.id === responses.tone_of_voice)?.label ?? "Neutraal"}`}
-                    onEdit={() => setEditingSection("support")}
-                    defaultOpen={false}
-                  >
-                    <div className="flex flex-col gap-1">
-                      <span>
-                        <span className="text-foreground">Wat helpt: </span>
-                        {labelsFor(responses.support_modes, SUPPORT_OPTIONS)}
-                      </span>
-                      <span>
-                        <span className="text-foreground">Actief ingrijpen: </span>
-                        {responses.active_intervention ? "Aan" : "Uit"}
-                      </span>
-                    </div>
-                  </SummarySection>
-                  <SummarySection
-                    eyebrow="Accountability"
-                    title={
-                      responses.accountability_mode === "buddies"
-                        ? "Buddies mode"
-                        : "Solo mode"
-                    }
-                    onEdit={() => setEditingSection("accountability")}
-                    defaultOpen={false}
-                  >
-                    {responses.accountability_mode === "buddies"
-                      ? "Je circle ondersteunt je actief."
-                      : "Alles blijft tussen jou en LOCKD."}
-                  </SummarySection>
-                </div>
-              </GlassCard>
-            </section>
-          )}
-
-          <section className="flex flex-col gap-3">
-            <div className="flex items-center justify-between px-1">
-              <h2 className="text-[11px] font-semibold uppercase tracking-[0.25em] text-purple-bright">
-                Jouw gewoontes
-              </h2>
-              <button
-                type="button"
-                onClick={() => setManagerOpen(true)}
-                className={cn(
-                  "rounded-full px-2 py-0.5 text-[11px] font-medium",
-                  "text-muted hover:text-foreground transition-colors",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-bright/60",
-                )}
-              >
-                Beheer →
-              </button>
-            </div>
-            {activeHabits.length === 0 ? (
-              <GlassCard tone="elevated" padding="md">
-                <p className="text-sm text-muted">
-                  Geen actieve gewoontes. Tap{" "}
-                  <span className="text-foreground">Beheer</span> om te
-                  beginnen.
-                </p>
-              </GlassCard>
-            ) : (
-              <GlassCard padding="none">
-                <ul className="flex flex-col divide-y divide-[var(--color-border)] px-4">
-                  {activeHabits.map((habitId) => (
-                    <li key={habitId}>
-                      <HabitAssumptionsRow
-                        habitId={habitId}
-                        answers={habitAnswers[habitId] ?? {}}
-                        onEdit={() => setEditingHabit(habitId)}
-                      />
-                    </li>
-                  ))}
-                </ul>
-              </GlassCard>
-            )}
+              <div className="flex flex-col gap-1 pt-1">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.25em] text-muted">
+                  Lid sinds
+                </span>
+                <span className="text-sm text-foreground">
+                  {formatSince(profile.created_at)}
+                </span>
+              </div>
+            </GlassCard>
           </section>
 
-          <section className="flex flex-col gap-3 pt-2">
+          {/* Zone: SETUP — behavioral profile + habits */}
+          <section className="flex flex-col gap-5">
+            <ZoneHeader label="Jouw profiel" />
+
+            {responses && (
+              <div className="flex flex-col gap-3">
+                <GlassCard padding="none">
+                  <div className="flex flex-col divide-y divide-[var(--color-border)] px-4">
+                    <SummarySection
+                      eyebrow="Jouw waarom"
+                      title="Wat je terug wil"
+                      onEdit={() => setEditingSection("outcomes")}
+                      defaultOpen={false}
+                    >
+                      {labelsFor(responses.desired_outcomes, OUTCOME_OPTIONS)}
+                    </SummarySection>
+                    <SummarySection
+                      eyebrow="Risicomomenten"
+                      title="Wanneer en waar"
+                      onEdit={() => setEditingSection("risk")}
+                      defaultOpen={false}
+                    >
+                      <div className="flex flex-col gap-1">
+                        <span>
+                          <span className="text-foreground">Tijd: </span>
+                          {labelsFor(responses.risk_times, TIME_OPTIONS)}
+                        </span>
+                        <span>
+                          <span className="text-foreground">Situaties: </span>
+                          {labelsFor(
+                            responses.risk_situations,
+                            SITUATION_OPTIONS,
+                          )}
+                        </span>
+                      </div>
+                    </SummarySection>
+                    <SummarySection
+                      eyebrow="Jouw triggers"
+                      title={`${responses.triggers.length} trigger${responses.triggers.length === 1 ? "" : "s"}`}
+                      onEdit={() => setEditingSection("triggers")}
+                      defaultOpen={false}
+                    >
+                      {labelsFor(responses.triggers, TRIGGER_OPTIONS)}
+                    </SummarySection>
+                    <SummarySection
+                      eyebrow="Ondersteuning"
+                      title={`Tone: ${TONE_OPTIONS.find((t) => t.id === responses.tone_of_voice)?.label ?? "Neutraal"}`}
+                      onEdit={() => setEditingSection("support")}
+                      defaultOpen={false}
+                    >
+                      <div className="flex flex-col gap-1">
+                        <span>
+                          <span className="text-foreground">Wat helpt: </span>
+                          {labelsFor(responses.support_modes, SUPPORT_OPTIONS)}
+                        </span>
+                        <span>
+                          <span className="text-foreground">Actief ingrijpen: </span>
+                          {responses.active_intervention ? "Aan" : "Uit"}
+                        </span>
+                      </div>
+                    </SummarySection>
+                    <SummarySection
+                      eyebrow="Accountability"
+                      title={
+                        responses.accountability_mode === "buddies"
+                          ? "Buddies mode"
+                          : "Solo mode"
+                      }
+                      onEdit={() => setEditingSection("accountability")}
+                      defaultOpen={false}
+                    >
+                      {responses.accountability_mode === "buddies"
+                        ? "Je circle ondersteunt je actief."
+                        : "Alles blijft tussen jou en LOCKD."}
+                    </SummarySection>
+                  </div>
+                </GlassCard>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between px-1">
+                <h2 className="text-[11px] font-semibold uppercase tracking-[0.25em] text-purple-bright">
+                  Jouw gewoontes
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setManagerOpen(true)}
+                  className={cn(
+                    "rounded-full px-2 py-0.5 text-[11px] font-medium",
+                    "text-muted hover:text-foreground transition-colors",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-bright/60",
+                  )}
+                >
+                  Beheer →
+                </button>
+              </div>
+              {activeHabits.length === 0 ? (
+                <GlassCard tone="elevated" padding="md">
+                  <p className="text-sm text-muted">
+                    Geen actieve gewoontes. Tap{" "}
+                    <span className="text-foreground">Beheer</span> om te
+                    beginnen.
+                  </p>
+                </GlassCard>
+              ) : (
+                <GlassCard padding="none">
+                  <ul className="flex flex-col divide-y divide-[var(--color-border)] px-4">
+                    {activeHabits.map((habitId) => (
+                      <li key={habitId}>
+                        <HabitAssumptionsRow
+                          habitId={habitId}
+                          answers={habitAnswers[habitId] ?? {}}
+                          onEdit={() => setEditingHabit(habitId)}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                </GlassCard>
+              )}
+            </div>
+          </section>
+
+          <button
+            type="button"
+            onClick={() => router.push("/goals")}
+            className={cn(
+              "flex w-full items-center justify-between gap-3",
+              "rounded-[var(--radius-md)] border border-[var(--color-border)]",
+              "bg-surface/60 px-4 py-3.5 text-left",
+              "transition-colors duration-150",
+              "hover:border-[var(--color-border-strong)]",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-bright/60",
+            )}
+          >
+            <span className="flex min-w-0 flex-col gap-0.5">
+              <span className="text-sm font-semibold text-foreground">
+                Missies & doelen
+              </span>
+              <span className="text-[11px] text-muted">
+                Bekijk actieve en afgeronde missies.
+              </span>
+            </span>
+            <span className="text-purple-bright">
+              <svg viewBox="0 0 16 16" fill="none" aria-hidden className="h-4 w-4">
+                <path
+                  d="M5 4l4 4-4 4"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
+          </button>
+
+          {/* Footer actions — quiet, low-emphasis. */}
+          <div className="mt-2 flex flex-col items-center gap-3 pt-4">
             <button
               type="button"
-              onClick={() => router.push("/goals")}
+              onClick={restartOnboarding}
               className={cn(
-                "flex w-full items-center justify-between gap-3",
-                "rounded-[var(--radius-md)] border border-[var(--color-border)]",
-                "bg-surface/60 px-4 py-3.5 text-left",
-                "transition-colors duration-150",
-                "hover:border-[var(--color-border-strong)]",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-bright/60",
+                "text-[12px] text-muted underline-offset-4 hover:text-foreground hover:underline",
+                "focus-visible:outline-none focus-visible:underline focus-visible:text-foreground",
+                "transition-colors",
               )}
             >
-              <span className="flex min-w-0 flex-col gap-0.5">
-                <span className="text-sm font-semibold text-foreground">
-                  Missies & doelen
-                </span>
-                <span className="text-[11px] text-muted">
-                  Bekijk actieve en afgeronde missies.
-                </span>
-              </span>
-              <span className="text-purple-bright">
-                <svg viewBox="0 0 16 16" fill="none" aria-hidden className="h-4 w-4">
-                  <path
-                    d="M5 4l4 4-4 4"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </span>
-            </button>
-          </section>
-
-          <section className="flex flex-col gap-3 pt-2">
-            <PrimaryButton fullWidth onClick={restartOnboarding}>
               Onboarding opnieuw doen
-            </PrimaryButton>
-            <GhostButton fullWidth onClick={signOut} loading={signingOut}>
-              Uitloggen
-            </GhostButton>
-          </section>
+            </button>
+            <button
+              type="button"
+              onClick={signOut}
+              disabled={signingOut}
+              className={cn(
+                "text-[12px] text-muted underline-offset-4 hover:text-danger hover:underline",
+                "focus-visible:outline-none focus-visible:underline focus-visible:text-danger",
+                "transition-colors disabled:opacity-50",
+              )}
+            >
+              {signingOut ? "Uitloggen…" : "Uitloggen"}
+            </button>
+          </div>
         </div>
       )}
 

@@ -43,7 +43,7 @@ function CheckIcon() {
 
 /**
  * Composite editor for the "Risicomomenten" section: two multi-selects
- * (time-of-day + situation), exactly mirroring StepPatroon from onboarding.
+ * (time-of-day + situation).
  */
 export function RiskMomentsEditSheet({
   initialTimes,

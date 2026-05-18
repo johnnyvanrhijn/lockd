@@ -81,6 +81,7 @@ export function StepSplash({
     <OnboardingShell
       total={total}
       current={current}
+      eyebrow="Welkom"
       title={
         <>
           Verandering begint op de momenten waarop je normaal{" "}

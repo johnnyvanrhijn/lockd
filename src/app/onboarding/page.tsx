@@ -22,9 +22,12 @@ import { StepSplash } from "./_components/StepSplash";
 import { StepFocus } from "./_components/StepFocus";
 import { StepHabitQuestions } from "./_components/StepHabitQuestions";
 import { StepWaarom } from "./_components/StepWaarom";
-import { StepPatroon } from "./_components/StepPatroon";
+import { StepRiskTimes } from "./_components/StepRiskTimes";
+import { StepRiskSituations } from "./_components/StepRiskSituations";
 import { StepTriggers } from "./_components/StepTriggers";
-import { StepSupport } from "./_components/StepSupport";
+import { StepTone } from "./_components/StepTone";
+import { StepWhatHelps } from "./_components/StepWhatHelps";
+import { StepActiveIntervention } from "./_components/StepActiveIntervention";
 import { StepAccountability } from "./_components/StepAccountability";
 import { StepBuddyInvite } from "./_components/StepBuddyInvite";
 import { StepSignals } from "./_components/StepSignals";
@@ -57,13 +60,15 @@ export type OnboardingState = {
   habit_answers: Record<string, AnswersByQuestion>;
 };
 
-// The "legacy" step numbers map 1:1 to the screens that existed before the
-// bad-habits feature: 1=splash, 2=focus, 3=waarom, ..., 8=summary/invite,
-// 9=signals (buddies), 10=summary (buddies). After Focus we inject N habit-
-// question steps where N = focus_habits.length; the legacy steps 3..N+ shift
-// down by N actual URL positions. `legacyStep <-> actualStep` translates.
-const LEGACY_TOTAL_SOLO = 8;
-const LEGACY_TOTAL_BUDDIES = 10;
+// Legacy step numbers (one-decision-per-screen):
+//   1 splash · 2 focus · 3 waarom · 4 risk-times · 5 risk-situations ·
+//   6 triggers · 7 tone · 8 what-helps · 9 active-intervention ·
+//   10 accountability · 11 summary/invite · 12 signals (buddies) ·
+//   13 summary (buddies)
+// After Focus we inject N habit-question steps where N = focus_habits.length;
+// legacy steps 3..N+ shift down by N actual URL positions.
+const LEGACY_TOTAL_SOLO = 11;
+const LEGACY_TOTAL_BUDDIES = 13;
 const FIRST_HABIT_STEP = 3; // actual step number of first habit-question screen
 
 function extractErrorMessage(err: unknown): string {
@@ -396,12 +401,22 @@ function OnboardingFlow() {
     [goToLegacyStep, runStep, saveResponses],
   );
 
-  const onPatroonNext = useCallback(
-    (risk_times: string[], risk_situations: string[]) =>
+  const onRiskTimesNext = useCallback(
+    (risk_times: string[]) =>
       runStep(async () => {
-        await saveResponses({ risk_times, risk_situations });
-        setState((s) => ({ ...s, risk_times, risk_situations }));
+        await saveResponses({ risk_times });
+        setState((s) => ({ ...s, risk_times }));
         goToLegacyStep(5);
+      }),
+    [goToLegacyStep, runStep, saveResponses],
+  );
+
+  const onRiskSituationsNext = useCallback(
+    (risk_situations: string[]) =>
+      runStep(async () => {
+        await saveResponses({ risk_situations });
+        setState((s) => ({ ...s, risk_situations }));
+        goToLegacyStep(6);
       }),
     [goToLegacyStep, runStep, saveResponses],
   );
@@ -411,30 +426,37 @@ function OnboardingFlow() {
       runStep(async () => {
         await saveResponses({ triggers });
         setState((s) => ({ ...s, triggers }));
-        goToLegacyStep(6);
+        goToLegacyStep(7);
       }),
     [goToLegacyStep, runStep, saveResponses],
   );
 
-  const onSupportNext = useCallback(
-    (
-      tone_of_voice: OnboardingState["tone_of_voice"],
-      support_modes: string[],
-      active_intervention: boolean,
-    ) =>
+  const onToneNext = useCallback(
+    (tone_of_voice: OnboardingState["tone_of_voice"]) =>
       runStep(async () => {
-        await saveResponses({
-          tone_of_voice,
-          support_modes,
-          active_intervention,
-        });
-        setState((s) => ({
-          ...s,
-          tone_of_voice,
-          support_modes,
-          active_intervention,
-        }));
-        goToLegacyStep(7);
+        await saveResponses({ tone_of_voice });
+        setState((s) => ({ ...s, tone_of_voice }));
+        goToLegacyStep(8);
+      }),
+    [goToLegacyStep, runStep, saveResponses],
+  );
+
+  const onWhatHelpsNext = useCallback(
+    (support_modes: string[]) =>
+      runStep(async () => {
+        await saveResponses({ support_modes });
+        setState((s) => ({ ...s, support_modes }));
+        goToLegacyStep(9);
+      }),
+    [goToLegacyStep, runStep, saveResponses],
+  );
+
+  const onActiveInterventionNext = useCallback(
+    (active_intervention: boolean) =>
+      runStep(async () => {
+        await saveResponses({ active_intervention });
+        setState((s) => ({ ...s, active_intervention }));
+        goToLegacyStep(10);
       }),
     [goToLegacyStep, runStep, saveResponses],
   );
@@ -444,14 +466,14 @@ function OnboardingFlow() {
       runStep(async () => {
         await saveResponses({ accountability_mode });
         setState((s) => ({ ...s, accountability_mode }));
-        goToLegacyStep(8);
+        goToLegacyStep(11);
       }),
     [goToLegacyStep, runStep, saveResponses],
   );
 
   const onInviteNext = useCallback(() => {
     setSaveError(null);
-    goToLegacyStep(9);
+    goToLegacyStep(12);
   }, [goToLegacyStep]);
 
   const onSignalsNext = useCallback(
@@ -459,7 +481,7 @@ function OnboardingFlow() {
       runStep(async () => {
         await savePrivacy(privacy);
         setState((s) => ({ ...s, privacy }));
-        goToLegacyStep(10);
+        goToLegacyStep(13);
       }),
     [goToLegacyStep, runStep, savePrivacy],
   );
@@ -591,18 +613,29 @@ function OnboardingFlow() {
   }
   if (legacy === 4) {
     return wrap(
-      <StepPatroon
+      <StepRiskTimes
         total={totalSteps}
         current={step}
         riskTimes={state.risk_times}
-        riskSituations={state.risk_situations}
         saving={saving}
         onBack={onBack}
-        onNext={onPatroonNext}
+        onNext={onRiskTimesNext}
       />,
     );
   }
   if (legacy === 5) {
+    return wrap(
+      <StepRiskSituations
+        total={totalSteps}
+        current={step}
+        riskSituations={state.risk_situations}
+        saving={saving}
+        onBack={onBack}
+        onNext={onRiskSituationsNext}
+      />,
+    );
+  }
+  if (legacy === 6) {
     return wrap(
       <StepTriggers
         total={totalSteps}
@@ -614,21 +647,43 @@ function OnboardingFlow() {
       />,
     );
   }
-  if (legacy === 6) {
+  if (legacy === 7) {
     return wrap(
-      <StepSupport
+      <StepTone
         total={totalSteps}
         current={step}
         toneOfVoice={state.tone_of_voice}
-        supportModes={state.support_modes}
-        activeIntervention={state.active_intervention}
         saving={saving}
         onBack={onBack}
-        onNext={onSupportNext}
+        onNext={onToneNext}
       />,
     );
   }
-  if (legacy === 7) {
+  if (legacy === 8) {
+    return wrap(
+      <StepWhatHelps
+        total={totalSteps}
+        current={step}
+        supportModes={state.support_modes}
+        saving={saving}
+        onBack={onBack}
+        onNext={onWhatHelpsNext}
+      />,
+    );
+  }
+  if (legacy === 9) {
+    return wrap(
+      <StepActiveIntervention
+        total={totalSteps}
+        current={step}
+        activeIntervention={state.active_intervention}
+        saving={saving}
+        onBack={onBack}
+        onNext={onActiveInterventionNext}
+      />,
+    );
+  }
+  if (legacy === 10) {
     return wrap(
       <StepAccountability
         total={totalSteps}
@@ -641,7 +696,7 @@ function OnboardingFlow() {
     );
   }
 
-  if (legacy === 8) {
+  if (legacy === 11) {
     if (isBuddies) {
       return wrap(
         <StepBuddyInvite
@@ -665,7 +720,7 @@ function OnboardingFlow() {
     );
   }
 
-  if (legacy === 9 && isBuddies) {
+  if (legacy === 12 && isBuddies) {
     return wrap(
       <StepSignals
         total={totalSteps}
@@ -678,7 +733,7 @@ function OnboardingFlow() {
     );
   }
 
-  if (legacy === 10 && isBuddies) {
+  if (legacy === 13 && isBuddies) {
     return wrap(
       <StepSummary
         total={totalSteps}

@@ -28,7 +28,6 @@ type MoodDistribution = Array<{ mood: MoodId; count: number; pct: number }>;
 type InzichtData = {
   insights: Insight[];
   impact: AggregatedImpact;
-  riskWindow: string | null;
   moodDistribution: MoodDistribution;
   moodDaysCounted: number;
 };
@@ -221,7 +220,6 @@ export default function InzichtPage() {
       setData({
         insights,
         impact,
-        riskWindow: describeWindow(risk),
         moodDistribution,
         moodDaysCounted: moodDaySet.size,
       });
@@ -278,7 +276,6 @@ export default function InzichtPage() {
 
           <ProofRail
             impact={data.impact}
-            riskWindow={data.riskWindow}
             onOpenHistory={() => router.push("/geschiedenis")}
           />
 

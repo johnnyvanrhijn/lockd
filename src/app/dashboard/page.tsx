@@ -18,10 +18,6 @@ import {
 } from "@/components/badHabits/HabitCommitmentCard";
 import { RiskCard } from "@/components/badHabits/RiskCard";
 import {
-  StreaksRail,
-  type StreakEntry,
-} from "@/components/badHabits/StreaksRail";
-import {
   aggregateImpact,
   type AggregatedImpact,
   type ImpactInput,
@@ -87,21 +83,6 @@ function PencilIcon() {
     </svg>
   );
 }
-
-function ArrowRight() {
-  return (
-    <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" aria-hidden>
-      <path
-        d="M5 4l4 4-4 4"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 
 /* -------------------------------------------------------------------------- */
 /*  Page                                                                      */
@@ -549,30 +530,25 @@ export default function DashboardPage() {
         </div>
       ) : (
         <div className="lockd-stagger flex flex-col gap-5">
-          <IdentityHeroCard
-            lockdStreak={data.lockdStreak}
-            bestStreak={data.bestStreak}
-            activeCount={data.consistency.active}
-            successCount={data.consistency.success}
-            onOpenHistory={() => router.push("/geschiedenis")}
-          />
-
-          {data.activeGoal && <ActiveMissionWidget goal={data.activeGoal} />}
-
-          <EmotionalCheckIn
-            key={data.todayMood?.id ?? "fresh"}
-            logDate={logDate}
-            initialMood={data.todayMood}
-          />
-
-          {data.habits.length > 0 && (
-            <RiskCard
-              risk={data.risk}
-              windowSentence={data.riskWindowSentence}
+          {/* Above-the-fold focal trio: status + single action */}
+          <div className="flex flex-col gap-4">
+            <IdentityHeroCard
+              lockdStreak={data.lockdStreak}
+              bestStreak={data.bestStreak}
+              activeCount={data.consistency.active}
+              successCount={data.consistency.success}
+              onOpenHistory={() => router.push("/geschiedenis")}
             />
-          )}
 
-          <PrimaryInterventionCTA />
+            {data.habits.length > 0 && (
+              <RiskCard
+                risk={data.risk}
+                windowSentence={data.riskWindowSentence}
+              />
+            )}
+
+            <PrimaryInterventionCTA />
+          </div>
 
           <section className="flex flex-col gap-3">
             <SectionHeader
@@ -618,54 +594,25 @@ export default function DashboardPage() {
             )}
           </section>
 
+          <EmotionalCheckIn
+            key={data.todayMood?.id ?? "fresh"}
+            logDate={logDate}
+            initialMood={data.todayMood}
+          />
+
           {data.habits.length > 0 && (
             <ProofRail
               impact={data.impact}
-              riskWindow={data.riskWindowSentence}
               onOpenHistory={() => router.push("/geschiedenis")}
             />
           )}
+
+          {data.activeGoal && <ActiveMissionWidget goal={data.activeGoal} />}
 
           <InnerCircleWidget />
 
           {data.insights.length > 0 && (
             <InsightsBlock insights={data.insights} />
-          )}
-
-          {data.habits.length > 0 && (
-            <StreaksRail
-              streaks={data.habits.map<StreakEntry>((h) => ({
-                habitId: h.habit_id,
-                name: h.name,
-                days: h.streak,
-              }))}
-            />
-          )}
-
-          {data.habits.length > 0 && (
-            <button
-              type="button"
-              onClick={() => router.push("/geschiedenis")}
-              className={cn(
-                "group flex items-center justify-between rounded-[var(--radius-md)]",
-                "border border-[var(--color-border)] bg-surface/60 px-4 py-3.5",
-                "text-left transition-colors duration-200",
-                "hover:border-[var(--color-border-strong)]",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-bright/60",
-              )}
-            >
-              <span className="flex flex-col">
-                <span className="text-sm font-semibold text-foreground">
-                  Terugkijken
-                </span>
-                <span className="text-[11px] text-muted">
-                  Bekijk elke dag dat je stand hield.
-                </span>
-              </span>
-              <span className="text-purple-bright">
-                <ArrowRight />
-              </span>
-            </button>
           )}
         </div>
       )}
@@ -696,7 +643,7 @@ function GreetingHeader({
   return (
     <header className="flex items-start justify-between gap-3 pt-1">
       <div className="flex min-w-0 flex-col gap-1">
-        <h1 className="text-2xl font-semibold leading-tight tracking-tight text-foreground">
+        <h1 className="text-3xl font-semibold leading-tight tracking-tight text-foreground">
           {name ? `${greeting}, ${name}` : greeting}
         </h1>
         <p className="text-sm text-muted">Bescherm vandaag wie je aan het worden bent.</p>
@@ -729,3 +676,4 @@ function SectionHeader({
     </div>
   );
 }
+

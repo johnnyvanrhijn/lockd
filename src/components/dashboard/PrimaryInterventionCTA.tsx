@@ -63,7 +63,7 @@ export function PrimaryInterventionCTA({
         <span className="text-[10px] font-semibold uppercase tracking-[0.28em] text-purple-bright">
           Lastig moment?
         </span>
-        <h2 className="text-[22px] font-semibold leading-tight text-foreground">
+        <h2 className="text-xl font-semibold leading-tight text-foreground">
           Onderbreek het voordat het een keuze wordt.
         </h2>
         <div className="mt-2 inline-flex items-center gap-2 self-start rounded-full border border-purple/50 bg-purple/15 px-4 py-2 text-xs font-semibold text-purple-bright">

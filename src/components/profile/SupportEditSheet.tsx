@@ -50,8 +50,7 @@ function CheckIcon() {
 
 /**
  * Composite editor for the "Ondersteuning" section: tone of voice (single),
- * support modes (multi), and the active-intervention toggle. Mirrors the
- * onboarding StepSupport screen's content without the step chrome.
+ * support modes (multi), and the active-intervention toggle.
  */
 export function SupportEditSheet({
   initialTone,

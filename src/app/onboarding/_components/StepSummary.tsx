@@ -213,7 +213,7 @@ export function StepSummary({
             icon={<AlertIcon />}
             eyebrow="Jouw triggers"
             title="Wat gaat er vaak vooraf"
-            onEdit={() => onEditStep(5)}
+            onEdit={() => onEditStep(6)}
             defaultOpen={false}
           >
             {labelsFor(state.triggers, TRIGGER_OPTIONS)}
@@ -222,7 +222,7 @@ export function StepSummary({
             icon={<VoiceIcon />}
             eyebrow="Jouw ondersteuning"
             title={`Tone: ${tone?.label ?? "Neutraal"}`}
-            onEdit={() => onEditStep(6)}
+            onEdit={() => onEditStep(7)}
             defaultOpen={false}
           >
             <div className="flex flex-col gap-1">
@@ -244,7 +244,7 @@ export function StepSummary({
                 ? "Accountability mode"
                 : "Solo mode"
             }
-            onEdit={() => onEditStep(7)}
+            onEdit={() => onEditStep(10)}
             defaultOpen={false}
           >
             {state.accountability_mode === "buddies"

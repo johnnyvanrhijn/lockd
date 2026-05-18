@@ -12,8 +12,6 @@ import {
 
 type Props = {
   impact: AggregatedImpact;
-  /** Optional risk-window sentence for the trailing "context" card. */
-  riskWindow?: string | null;
   /** Click on history footer. */
   onOpenHistory?: () => void;
 };
@@ -33,7 +31,7 @@ type Card = {
  *
  * Falls back to a single empty-state card if no impact data exists.
  */
-export function ProofRail({ impact, riskWindow, onOpenHistory }: Props) {
+export function ProofRail({ impact, onOpenHistory }: Props) {
   const cards: Card[] = [];
 
   if (impact.hours >= 0.1) {
@@ -78,15 +76,6 @@ export function ProofRail({ impact, riskWindow, onOpenHistory }: Props) {
         body: "Urges die je hebt overwonnen.",
       });
     }
-  }
-
-  if (riskWindow) {
-    cards.push({
-      id: "risk-window",
-      eyebrow: "Risico-venster",
-      value: "Patroon",
-      body: riskWindow,
-    });
   }
 
   if (cards.length === 0) {

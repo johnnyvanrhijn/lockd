@@ -155,10 +155,7 @@ export function IdentityHeroCard({
         </div>
 
         {hasHabits && (
-          <div className="mt-4 flex items-center justify-between border-t border-[var(--color-border)] pt-3 text-[11px]">
-            <span className="text-muted">
-              {successCount}/{activeCount} standaarden gehouden
-            </span>
+          <div className="mt-4 flex items-center justify-end border-t border-[var(--color-border)] pt-3 text-[11px]">
             <span className="inline-flex items-center gap-1 text-purple-bright">
               Geschiedenis
               <svg
